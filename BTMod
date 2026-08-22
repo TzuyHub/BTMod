@@ -1,202 +1,66 @@
-import pygame
-import random
-import sys
+-- Tạo GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FPSBooster"
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
 
-# Khởi tạo Pygame
-pygame.init()
+local Button = Instance.new("TextButton")
+Button.Size = UDim2.new(0, 150, 0, 50)
+Button.Position = UDim2.new(0.5, -75, 0.1, 0)
+Button.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
+Button.TextColor3 = Color3.fromRGB(0, 0, 0)
+Button.Font = Enum.Font.GothamBold
+Button.TextSize = 20
+Button.Text = "TĂNG FPS"
+Button.Parent = ScreenGui
 
-# Kích thước màn hình
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Trộm một quả trứng - Xóa con vật ngủ")
+local isHidden = false -- Biến kiểm tra trạng thái
 
-# Màu sắc
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BROWN = (139, 69, 19)
-YELLOW = (255, 255, 0)
-
-# FPS
-clock = pygame.time.Clock()
-FPS = 60
-
-# Font
-font = pygame.font.Font(None, 36)
-
-class Animal:
-    """Lớp đại diện cho con vật canh trứng"""
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.width = 50
-        self.height = 50
-        self.is_sleeping = True  # Trạng thái ngủ
-        self.sleep_timer = 0
-        self.wake_timer = 0
-        self.rect = pygame.Rect(x, y, self.width, self.height)
-        
-    def update(self):
-        """Cập nhật trạng thái của con vật"""
-        if self.is_sleeping:
-            # Giảm timer ngủ
-            self.sleep_timer -= 1
-            if self.sleep_timer <= 0:
-                # Tỉnh dậy sau 2-5 giây
-                self.is_sleeping = False
-                self.wake_timer = random.randint(60, 120)  # 1-2 giây
-        else:
-            # Giảm timer tỉnh
-            self.wake_timer -= 1
-            if self.wake_timer <= 0:
-                # Ngủ lại sau 1-2 giây
-                self.is_sleeping = True
-                self.sleep_timer = random.randint(120, 300)  # 2-5 giây
-                
-    def draw(self, screen):
-        """Vẽ con vật lên màn hình"""
-        # Vẽ body
-        if self.is_sleeping:
-            pygame.draw.circle(screen, BROWN, (self.x + 25, self.y + 25), 20)
-            # Vẽ mắt nhắm (ngủ)
-            pygame.draw.line(screen, BLACK, (self.x + 18, self.y + 20), 
-                           (self.x + 32, self.y + 20), 2)
-            pygame.draw.line(screen, BLACK, (self.x + 18, self.y + 30), 
-                           (self.x + 32, self.y + 30), 2)
-            # Zzz
-            z_font = pygame.font.Font(None, 20)
-            z_text = z_font.render("Zzz", True, BLACK)
-            screen.blit(z_text, (self.x - 10, self.y - 20))
-        else:
-            pygame.draw.circle(screen, RED, (self.x + 25, self.y + 25), 20)
-            # Vẽ mắt mở (tỉnh)
-            pygame.draw.circle(screen, BLACK, (self.x + 18, self.y + 22), 4)
-            pygame.draw.circle(screen, BLACK, (self.x + 32, self.y + 22), 4)
-            # Vẽ lông mày tức giận
-            pygame.draw.line(screen, BLACK, (self.x + 13, self.y + 15), 
-                           (self.x + 23, self.y + 18), 2)
-            pygame.draw.line(screen, BLACK, (self.x + 37, self.y + 15), 
-                           (self.x + 27, self.y + 18), 2)
-            
-    def check_click(self, pos):
-        """Kiểm tra xem con vật có bị click không"""
-        return self.rect.collidepoint(pos)
-
-class Egg:
-    """Lớp đại diện cho quả trứng"""
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.radius = 15
-        self.rect = pygame.Rect(x - self.radius, y - self.radius, 
-                               self.radius * 2, self.radius * 2)
-        
-    def draw(self, screen):
-        pygame.draw.ellipse(screen, YELLOW, 
-                           (self.x - self.radius, self.y - self.radius, 
-                            self.radius * 2, self.radius * 2 + 5))
-        pygame.draw.ellipse(screen, WHITE, 
-                           (self.x - self.radius + 3, self.y - self.radius + 3, 
-                            self.radius * 1.5, self.radius * 1.2))
-
-def main():
-    # Tạo các đối tượng
-    animals = []
-    # Tạo 3 con vật canh trứng
-    for i in range(3):
-        x = 150 + i * 250
-        y = 400
-        animals.append(Animal(x, y))
+Button.MouseButton1Click:Connect(function()
+    isHidden = not isHidden -- Đảo trạng thái Bật/Tắt
     
-    # Tạo quả trứng
-    egg = Egg(400, 200)
-    
-    # Biến trạng thái game
-    game_over = False
-    score = 0
-    
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                
-            if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
-                pos = pygame.mouse.get_pos()
-                
-                # Kiểm tra click vào con vật đang ngủ
-                for animal in animals:
-                    if animal.check_click(pos) and animal.is_sleeping:
-                        # XÓA CON VẬT ĐANG NGỦ
-                        animals.remove(animal)
-                        score += 1
-                        print(f"Đã xóa con vật ngủ! Điểm: {score}")
-                        break
-                
-                # Kiểm tra click vào trứng
-                if egg.rect.collidepoint(pos) and len(animals) == 0:
-                    game_over = True
-                    print("Bạn đã trộm được trứng! Chiến thắng!")
+    if isHidden then
+        Button.Text = "HIỆN PET LẠI"
+        Button.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
         
-        # Cập nhật
-        if not game_over:
-            for animal in animals:
-                animal.update()
+        -- Lặp qua tất cả các vật thể trong game
+        for _, v in pairs(workspace:GetDescendants()) do
+            -- Tìm các con Pet (thường là Model có Humanoid hoặc tên chứa 'Pet')
+            if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+                v:SetAttribute("HiddenByScript", true) -- Đánh dấu để nhớ
+                v.PrimaryPart.Transparency = 1
+                for _, part in pairs(v:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = 1 -- Làm trong suốt
+                        part.CanCollide = false -- Không va chạm
+                        part.CanQuery = false -- Không bị raycast
+                    end
+                    if part:IsA("Decal") then
+                        part.Transparency = 1
+                    end
+                end
+            end
+        end
+    else
+        Button.Text = "TĂNG FPS"
+        Button.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
         
-        # Vẽ
-        screen.fill(WHITE)
-        
-        # Vẽ nền
-        pygame.draw.rect(screen, GREEN, (0, 450, WIDTH, 150))
-        
-        # Vẽ tổ
-        pygame.draw.ellipse(screen, BROWN, (350, 230, 100, 40))
-        
-        # Vẽ trứng
-        egg.draw(screen)
-        
-        # Vẽ các con vật
-        for animal in animals:
-            animal.draw(screen)
-            # Hiển thị trạng thái
-            status = "NGỦ" if animal.is_sleeping else "TỈNH"
-            status_text = font.render(status, True, BLACK)
-            screen.blit(status_text, (animal.x - 10, animal.y - 40))
-        
-        # Hiển thị điểm và hướng dẫn
-        score_text = font.render(f"Điểm: {score}", True, BLACK)
-        screen.blit(score_text, (10, 10))
-        
-        if game_over:
-            win_text = font.render("BẠN ĐÃ TRỘM ĐƯỢC TRỨNG! CHIẾN THẮNG!", True, RED)
-            screen.blit(win_text, (WIDTH//2 - 200, HEIGHT//2 - 20))
-            
-            restart_text = font.render("Nhấn R để chơi lại", True, BLACK)
-            screen.blit(restart_text, (WIDTH//2 - 100, HEIGHT//2 + 30))
-            
-            # Xử lý phím R để restart
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_r]:
-                # Reset game
-                animals = []
-                for i in range(3):
-                    x = 150 + i * 250
-                    y = 400
-                    animals.append(Animal(x, y))
-                game_over = False
-                score = 0
-        
-        # Hướng dẫn
-        if not game_over:
-            guide = font.render("Click vào con vật đang NGỦ để xóa nó!", True, BLACK)
-            screen.blit(guide, (WIDTH//2 - 150, 550))
-        
-        pygame.display.flip()
-        clock.tick(FPS)
-    
-    pygame.quit()
-    sys.exit()
-
-if __name__ == "__main__":
-    main()
+        -- Khôi phục lại
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+                if v:GetAttribute("HiddenByScript") then
+                    for _, part in pairs(v:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.Transparency = 0
+                            part.CanCollide = true
+                            part.CanQuery = true
+                        end
+                        if part:IsA("Decal") then
+                            part.Transparency = 0
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
