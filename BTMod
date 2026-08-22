@@ -1,18 +1,17 @@
 -- Tên Script: BTMod
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BTMod" -- Đặt tên GUI là BTMod
+ScreenGui.Name = "BTMod" 
 ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Tạo nút bấm
 local Button = Instance.new("TextButton")
 Button.Name = "BTModButton"
 Button.Size = UDim2.new(0, 180, 0, 50)
 Button.Position = UDim2.new(0.5, -90, 0.1, 0)
-Button.BackgroundColor3 = Color3.fromRGB(255, 69, 0) -- Màu cam đỏ
+Button.BackgroundColor3 = Color3.fromRGB(255, 69, 0) 
 Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.GothamBold
-Button.TextSize = 14
+Button.TextSize = 13
 Button.Text = "Xóa con đang cảnh chừng trứng"
 Button.Parent = ScreenGui
 
@@ -27,10 +26,8 @@ Button.MouseButton1Click:Connect(function()
         
         -- Quét toàn bộ pet trong game
         for _, v in pairs(workspace:GetDescendants()) do
-            -- Chỉ xử lý các Model có Humanoid (là Pet)
             if v:IsA("Model") and v:FindFirstChild("Humanoid") then
                 
-                -- Kiểm tra xem có phải nhân vật người chơi không (tránh xóa nhầm chính mình)
                 local isCharacter = false
                 for _, player in pairs(game.Players:GetPlayers()) do
                     if player.Character == v then
@@ -39,19 +36,25 @@ Button.MouseButton1Click:Connect(function()
                     end
                 end
                 
-                -- Nếu là Pet (không phải nhân vật) thì tiến hành ẩn
                 if not isCharacter then
                     v:SetAttribute("HiddenByScript", true)
                     for _, part in pairs(v:GetDescendants()) do
                         if part:IsA("BasePart") then
-                            part.Transparency = 1
-                            part.CanCollide = false
-                            part.CanQuery = false
-                            part.CanTouch = false
+                            part.Transparency = 1 -- Trong suốt
+                            part.CanCollide = false -- Không bị vướng khi đi lại
+                            part.CanTouch = false -- Không thể chạm vào
+                            part.CanQuery = false -- Đòn đánh/tia laser KHÔNG TRÚNG được
                         end
                         if part:IsA("Decal") then
                             part.Transparency = 1
                         end
+                    end
+                    -- Vô hiệu hóa sức mạnh vật lý của pet
+                    local primaryPart = v.PrimaryPart
+                    if primaryPart then
+                        primaryPart.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                        primaryPart.AssemblyAngularVelocity = Vector3.new(0,0,0)
+                        primaryPart.Anchored = true 
                     end
                 end
             end
@@ -69,8 +72,9 @@ Button.MouseButton1Click:Connect(function()
                         if part:IsA("BasePart") then
                             part.Transparency = 0
                             part.CanCollide = true
-                            part.CanQuery = true
                             part.CanTouch = true
+                            part.CanQuery = true
+                            part.Anchored = false
                         end
                         if part:IsA("Decal") then
                             part.Transparency = 0
