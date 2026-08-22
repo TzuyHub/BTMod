@@ -1,9 +1,15 @@
--- Tên Script: BTMod
+-- Tên Script: BTMod (Chống đuổi & Chống tấn công tuyệt đối)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BTMod" 
-ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true 
 
+-- Tạo nút bấm
 local Button = Instance.new("TextButton")
 Button.Name = "BTModButton"
 Button.Size = UDim2.new(0, 220, 0, 50)
@@ -11,105 +17,148 @@ Button.Position = UDim2.new(0.5, -110, 0.1, 0)
 Button.BackgroundColor3 = Color3.fromRGB(255, 69, 0) 
 Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.GothamBold
-Button.TextSize = 13
-Button.Text = "Khóa cứng Pet (Không đánh được)"
+Button.TextSize = 12
+Button.Text = "Khóa Pet (Chống đuổi)"
 Button.Parent = ScreenGui
 
-local isActive = false
+-- Thanh kéo thả
+local DragBar = Instance.new("Frame")
+DragBar.Size = UDim2.new(0, 220, 0, 20)
+DragBar.Position = UDim2.new(0, 0, 0, -20)
+DragBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+DragBar.BorderSizePixel = 0
+DragBar.Parent = Button
 
+local isActive = false
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(Input)
+    local delta = Input.Position - dragStart
+    Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+DragBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Button.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+
+DragBar.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then update(input) end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then update(input) end
+end)
+
+-- Hàm khóa Pet
+local function FreezePets()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+            local isCharacter = false
+            for _, player in pairs(Players:GetPlayers()) do
+                if player.Character == v then isCharacter = true break end
+            end
+            
+            if not isCharacter then
+                -- 1. Vô hiệu hóa AI (Không đuổi theo, không tấn công)
+                local humanoid = v:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = 0
+                    humanoid.JumpPower = 0
+                    humanoid.PlatformStand = true -- Đứng im như tượng
+                    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+                end
+                
+                -- 2. Phá vỡ khớp nối vật lý
+                for _, joint in pairs(v:GetJoints()) do joint:Destroy() end
+                
+                -- 3. Khóa cứng toàn bộ
+                for _, part in pairs(v:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Anchored = true 
+                        part.CanCollide = false 
+                        part.CanTouch = false 
+                        part.CanQuery = false -- Đòn đánh xuyên qua
+                    end
+                end
+                
+                -- 4. Tắt script server điều khiển
+                for _, script in pairs(v:GetDescendants()) do
+                    if script:IsA("Script") or script:IsA("LocalScript") then script.Disabled = true end
+                end
+
+                -- 5. Đẩy xuống đất sâu vĩnh viễn
+                v:PivotTo(CFrame.new(0, -99999, 0))
+
+                -- 6. Đánh dấu là đã khóa
+                v:SetAttribute("FrozenByBTMod", true)
+            end
+        end
+    end
+end
+
+-- Hàm mở khóa Pet
+local function UnfreezePets()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+            if v:GetAttribute("FrozenByBTMod") then
+                local humanoid = v:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = 16
+                    humanoid.JumpPower = 50
+                    humanoid.PlatformStand = false
+                end
+                
+                for _, part in pairs(v:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Anchored = false
+                        part.CanCollide = true
+                        part.CanTouch = true
+                        part.CanQuery = true
+                    end
+                end
+                
+                for _, script in pairs(v:GetDescendants()) do
+                    if script:IsA("Script") or script:IsA("LocalScript") then script.Disabled = false end
+                end
+                
+                -- Đưa về gần người chơi
+                if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    v:PivotTo(CFrame.new(Players.LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)))
+                end
+                v:SetAttribute("FrozenByBTMod", nil)
+            end
+        end
+    end
+end
+
+-- Sự kiện bấm nút
 Button.MouseButton1Click:Connect(function()
     isActive = not isActive
     
     if isActive then
         Button.Text = "Mở khóa Pet"
-        Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Màu đỏ khi đang khóa
+        Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) 
+        FreezePets()
         
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("Model") and v:FindFirstChild("Humanoid") then
-                
-                -- Kiểm tra xem có phải là nhân vật người chơi không (tránh khóa nhầm chính mình)
-                local isCharacter = false
-                for _, player in pairs(game.Players:GetPlayers()) do
-                    if player.Character == v then
-                        isCharacter = true
-                        break
-                    end
-                end
-                
-                if not isCharacter then
-                    v:SetAttribute("FrozenByBTMod", true)
-                    
-                    -- 1. Tắt não (AI)
-                    local humanoid = v:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        humanoid.WalkSpeed = 0
-                        humanoid.JumpPower = 0
-                        humanoid.PlatformStand = true
-                        humanoid:ChangeState(Enum.HumanoidStateType.Physics) -- Ép về trạng thái vật lý
-                    end
-                    
-                    -- 2. Phá vỡ khớp nối (Break Joints) để chúng không thể xoay hoặc cử động chân
-                    for _, joint in pairs(v:GetJoints()) do
-                        joint:Destroy()
-                    end
-                    
-                    -- 3. Khóa cứng (Anchor) toàn bộ các bộ phận
-                    for _, part in pairs(v:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.Anchored = true -- Quan trọng nhất: Không cho vật lý đụng vào
-                            part.CanCollide = false
-                            part.CanTouch = false
-                            part.CanQuery = false -- Đòn đánh xuyên qua
-                        end
-                    end
-                    
-                    -- 4. Vô hiệu hóa Script của Server đang điều khiển nó
-                    for _, script in pairs(v:GetDescendants()) do
-                        if script:IsA("Script") or script:IsA("LocalScript") then
-                            script.Disabled = true
-                        end
-                    end
-                    
-                    -- 5. Đẩy nó ra xa người chơi (Dưới đất) để tuyệt đối không thể chạm vào bạn
-                    v:PivotTo(CFrame.new(0, -1000, 0))
-                end
+        -- Tạo một vòng lặp âm thầm để đảm bảo Server không "hồi sinh" pet
+        task.spawn(function()
+            while isActive do
+                FreezePets() -- Chạy lại liên tục mỗi 0.5 giây
+                task.wait(0.5)
             end
-        end
+        end)
         
     else
-        Button.Text = "Khóa cứng Pet (Không đánh được)"
+        Button.Text = "Khóa Pet (Chống đuổi)"
         Button.BackgroundColor3 = Color3.fromRGB(255, 69, 0)
-        
-        -- Khôi phục lại pet
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("Model") and v:FindFirstChild("Humanoid") then
-                if v:GetAttribute("FrozenByBTMod") then
-                    local humanoid = v:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        humanoid.WalkSpeed = 16
-                        humanoid.JumpPower = 50
-                        humanoid.PlatformStand = false
-                    end
-                    
-                    for _, part in pairs(v:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.Anchored = false
-                            part.CanCollide = true
-                            part.CanTouch = true
-                            part.CanQuery = true
-                        end
-                    end
-                    
-                    for _, script in pairs(v:GetDescendants()) do
-                        if script:IsA("Script") or script:IsA("LocalScript") then
-                            script.Disabled = false
-                        end
-                    end
-                    
-                    -- Đưa về vị trí ban đầu (gần người chơi)
-                    v:PivotTo(CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)))
-                end
-            end
-        end
+        UnfreezePets()
     end
 end)
