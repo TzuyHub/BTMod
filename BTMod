@@ -5,7 +5,7 @@
 -- Khởi tạo
 local BTMod = {}
 BTMod.Name = "BTMod"
-BTMod.Version = "4.0.0"
+BTMod.Version = "5.0.0"
 BTMod.Enabled = true
 
 -- Services
@@ -22,35 +22,29 @@ local isRunning = true
 local autoSteal = false
 local eggs = {}
 
--- Hàm tìm quái vật
+-- Hàm tìm tất cả quái vật (mở rộng tìm kiếm)
 local function findMonsters()
     local monsters = {}
     
-    local function searchIn(parent)
-        for _, obj in pairs(parent:GetDescendants()) do
-            if obj:IsA("Model") then
-                local humanoid = obj:FindFirstChildOfClass("Humanoid")
-                if humanoid and humanoid.Health > 0 then
-                    local name = obj.Name:lower()
-                    if name:find("monster") or name:find("quái") or 
-                       name:find("guard") or name:find("canh") or
-                       name:find("enemy") or name:find("địch") or
-                       name:find("beast") or name:find("thú") or
-                       name:find("scp") or name:find("entity") then
-                        monsters[obj] = humanoid
+    -- Tìm tất cả Humanoid trong game
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Humanoid") and obj.Health > 0 then
+            local model = obj.Parent
+            if model and model:IsA("Model") then
+                local name = model.Name:lower()
+                -- Kiểm tra nếu không phải là người chơi
+                local isPlayer = false
+                for _, plr in pairs(Players:GetPlayers()) do
+                    if plr.Character == model then
+                        isPlayer = true
+                        break
                     end
                 end
+                
+                if not isPlayer then
+                    monsters[model] = obj
+                end
             end
-        end
-    end
-    
-    searchIn(Workspace)
-    
-    local folderNames = {"Enemies", "Monsters", "Guards", "NPCs", "Entities", "SCPs"}
-    for _, folderName in pairs(folderNames) do
-        local folder = Workspace:FindFirstChild(folderName)
-        if folder then
-            searchIn(folder)
         end
     end
     
@@ -61,36 +55,41 @@ end
 local function findEggs()
     local foundEggs = {}
     
-    local function searchIn(parent)
-        for _, obj in pairs(parent:GetDescendants()) do
-            local name = obj.Name:lower()
-            if name:find("egg") or name:find("trứng") or name:find("golden") then
-                if obj:IsA("Part") or obj:IsA("MeshPart") or obj:IsA("Model") then
-                    if obj:IsA("Part") or obj:IsA("MeshPart") then
-                        if obj.Size.Magnitude < 20 then
-                            table.insert(foundEggs, obj)
-                        end
-                    end
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        local name = obj.Name:lower()
+        if name:find("egg") or name:find("trứng") or name:find("golden") then
+            if obj:IsA("Part") or obj:IsA("MeshPart") then
+                if obj.Size.Magnitude < 20 then
+                    table.insert(foundEggs, obj)
                 end
             end
         end
     end
     
-    searchIn(Workspace)
     return foundEggs
 end
 
--- Hàm lưu vị trí gốc của quái vật
+-- Hàm lưu vị trí gốc của quái vật (CHẠY NGAY LẬP TỨC)
 local function saveMonsterPositions()
     local monsters = findMonsters()
     local savedCount = 0
     
     for monster, humanoid in pairs(monsters) do
         if monster and monster.Parent then
-            local rootPart = monster:FindFirstChild("HumanoidRootPart") or monster:FindFirstChild("Torso")
-            if rootPart and not originalPositions[monster] then
-                originalPositions[monster] = rootPart.CFrame
+            -- Tìm root part
+            local rootPart = monster:FindFirstChild("HumanoidRootPart") or 
+                           monster:FindFirstChild("Torso") or
+                           monster:FindFirstChild("UpperTorso")
+            
+            if rootPart and rootPart:IsA("BasePart") then
+                -- Lưu vị trí CHÍNH XÁC
+                originalPositions[monster] = {
+                    CFrame = rootPart.CFrame,
+                    Position = rootPart.Position,
+                    Rotation = rootPart.Rotation
+                }
                 savedCount = savedCount + 1
+                print("[BTMod] Đã lưu vị trí của: " .. monster.Name)
             end
         end
     end
@@ -98,30 +97,31 @@ local function saveMonsterPositions()
     return savedCount
 end
 
--- Hàm teleport quái vật về vị trí gốc
+-- Hàm teleport quái vật về vị trí gốc (SỬA LẠI)
 local function teleportMonstersBack()
     local monsters = findMonsters()
     local teleportedCount = 0
     
     for monster, humanoid in pairs(monsters) do
         if monster and monster.Parent then
-            local rootPart = monster:FindFirstChild("HumanoidRootPart") or monster:FindFirstChild("Torso")
-            local originalCFrame = originalPositions[monster]
+            local rootPart = monster:FindFirstChild("HumanoidRootPart") or 
+                           monster:FindFirstChild("Torso") or
+                           monster:FindFirstChild("UpperTorso")
             
-            if rootPart and originalCFrame then
+            local savedData = originalPositions[monster]
+            
+            if rootPart and rootPart:IsA("BasePart") and savedData then
                 pcall(function()
-                    -- Tạo tween mượt mà
-                    local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear)
-                    local tween = TweenService:Create(rootPart, tweenInfo, {
-                        CFrame = originalCFrame
-                    })
-                    tween:Play()
+                    -- Teleport TRỰC TIẾP (không dùng tween để chắc chắn)
+                    rootPart.CFrame = savedData.CFrame
+                    rootPart.Position = savedData.Position
+                    rootPart.Rotation = savedData.Rotation
                     
                     -- Reset vận tốc
-                    if rootPart:IsA("BasePart") then
-                        rootPart.Velocity = Vector3.new(0, 0, 0)
-                        rootPart.RotVelocity = Vector3.new(0, 0, 0)
-                    end
+                    rootPart.Velocity = Vector3.new(0, 0, 0)
+                    rootPart.RotVelocity = Vector3.new(0, 0, 0)
+                    rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
                     
                     -- Khôi phục tốc độ
                     if humanoid and originalSpeed[monster] then
@@ -129,6 +129,7 @@ local function teleportMonstersBack()
                     end
                     
                     teleportedCount = teleportedCount + 1
+                    print("[BTMod] Đã TP " .. monster.Name .. " về vị trí gốc!")
                 end)
             end
         end
@@ -140,9 +141,6 @@ end
 -- Hàm làm chậm quái vật
 local function slowMonsters(speedMultiplier)
     if not isRunning then return 0 end
-    
-    -- Lưu vị trí gốc trước khi làm chậm
-    saveMonsterPositions()
     
     local monsters = findMonsters()
     local slowedCount = 0
@@ -210,10 +208,6 @@ local function teleportEggToPlayer()
     for _, egg in pairs(eggs) do
         if egg and egg.Parent then
             pcall(function()
-                if not egg:GetAttribute("BTMod_OriginalPos") then
-                    egg:SetAttribute("BTMod_OriginalPos", egg.Position)
-                end
-                
                 local newPos = root.Position + Vector3.new(0, 5, 0)
                 egg.CFrame = CFrame.new(newPos)
                 egg.Anchored = false
@@ -396,13 +390,21 @@ local function createGUI()
         end
     end)
     
-    -- Chức năng TP về lại
+    -- Chức năng TP về lại (SỬA LẠI)
     tpBackButton.MouseButton1Click:Connect(function()
-        local count = teleportMonstersBack()
-        print("[BTMod] Đã đưa " .. count .. " quái vật về vị trí gốc!")
+        -- Lưu vị trí mới nhất trước khi TP
+        saveMonsterPositions()
         
-        -- Hiệu ứng thông báo
-        tpBackButton.Text = "✅ Đã TP!"
+        local count = teleportMonstersBack()
+        
+        if count > 0 then
+            tpBackButton.Text = "✅ Đã TP " .. count .. " quái!"
+            print("[BTMod] Đã đưa " .. count .. " quái vật về vị trí gốc!")
+        else
+            tpBackButton.Text = "❌ Không có quái!"
+            print("[BTMod] Không tìm thấy quái vật để TP!")
+        end
+        
         wait(2)
         tpBackButton.Text = "🔄 TP Về Lại"
     end)
@@ -437,6 +439,8 @@ local function createGUI()
     -- Chức năng làm chậm
     slowButton.MouseButton1Click:Connect(function()
         if isRunning then
+            -- Lưu vị trí trước khi làm chậm
+            saveMonsterPositions()
             local count = slowMonsters(0.05)
             print("[BTMod] Đã làm chậm " .. count .. " quái vật!")
         end
@@ -453,6 +457,7 @@ local function createGUI()
     -- Thực hiện tất cả
     allButton.MouseButton1Click:Connect(function()
         if isRunning then
+            saveMonsterPositions()
             local eggsCount = teleportEggToPlayer()
             local slowed = slowMonsters(0.05)
             local disabled = disableAttacks()
@@ -476,12 +481,20 @@ end
 local function watchForNewMonsters()
     Workspace.DescendantAdded:Connect(function(descendant)
         if descendant:IsA("Model") and isRunning then
-            local name = descendant.Name:lower()
-            if name:find("monster") or name:find("quái") or 
-               name:find("guard") or name:find("canh") or
-               name:find("enemy") or name:find("địch") or
-               name:find("beast") or name:find("thú") then
-                wait(0.5)
+            wait(1) -- Đợi model load xong
+            local humanoid = descendant:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                -- Lưu vị trí ngay khi quái vật mới xuất hiện
+                local rootPart = descendant:FindFirstChild("HumanoidRootPart") or 
+                               descendant:FindFirstChild("Torso")
+                if rootPart then
+                    originalPositions[descendant] = {
+                        CFrame = rootPart.CFrame,
+                        Position = rootPart.Position,
+                        Rotation = rootPart.Rotation
+                    }
+                end
+                
                 if isRunning then
                     slowMonsters(0.05)
                     disableAttacks()
@@ -503,9 +516,20 @@ local function init()
     createGUI()
     watchForNewMonsters()
     
-    -- Tự động lưu vị trí quái vật khi vào game
-    wait(2)
-    saveMonsterPositions()
+    -- Lưu vị trí quái vật NGAY LẬP TỨC khi script chạy
+    wait(1)
+    local savedCount = saveMonsterPositions()
+    print("[BTMod] Đã lưu vị trí của " .. savedCount .. " quái vật!")
+    
+    -- Lưu lại sau mỗi 10 giây để cập nhật vị trí mới
+    spawn(function()
+        while true do
+            wait(10)
+            if isRunning then
+                saveMonsterPositions()
+            end
+        end
+    end)
     
     -- Tự động áp dụng khi vào game
     if BTMod.Enabled then
