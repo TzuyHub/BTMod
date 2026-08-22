@@ -1,541 +1,184 @@
 -- Script: BTMod
--- Game: Lấy trộm một quả trứng (Steal an Egg)
--- Chức năng: Làm chậm quái vật, teleport trứng, TP quái vật về chỗ cũ
+-- Game: Lấy trộm một quả trứng
+-- Phiên bản: 6.0 - Siêu Đơn Giản và Hiệu Quả
 
--- Khởi tạo
-local BTMod = {}
-BTMod.Name = "BTMod"
-BTMod.Version = "5.0.0"
-BTMod.Enabled = true
-
--- Services
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-
--- Biến lưu trữ
 local player = Players.LocalPlayer
-local originalSpeed = {}
-local originalPositions = {} -- Lưu vị trí gốc của quái vật
-local isRunning = true
-local autoSteal = false
-local eggs = {}
 
--- Hàm tìm tất cả quái vật (mở rộng tìm kiếm)
-local function findMonsters()
-    local monsters = {}
-    
-    -- Tìm tất cả Humanoid trong game
+-- Tạo GUI siêu đơn giản
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BTMod"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Frame chính
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 150)
+frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderColor3 = Color3.fromRGB(255, 255, 0)
+frame.BorderSizePixel = 2
+frame.Parent = screenGui
+
+-- Tiêu đề
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -10, 0, 30)
+title.Position = UDim2.new(0, 5, 0, 5)
+title.Text = "🥚 BTMod"
+title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+title.TextColor3 = Color3.fromRGB(255, 255, 0)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 16
+title.Parent = frame
+
+-- Nút TP quái vật về chỗ cũ
+local tpButton = Instance.new("TextButton")
+tpButton.Size = UDim2.new(1, -10, 0, 35)
+tpButton.Position = UDim2.new(0, 5, 0, 40)
+tpButton.Text = "🔄 TP Quái Về Chỗ Cũ"
+tpButton.BackgroundColor3 = Color3.fromRGB(255, 0, 150)
+tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+tpButton.Font = Enum.Font.SourceSansBold
+tpButton.TextSize = 14
+tpButton.Parent = frame
+
+-- Nút kéo trứng
+local eggButton = Instance.new("TextButton")
+eggButton.Size = UDim2.new(1, -10, 0, 35)
+eggButton.Position = UDim2.new(0, 5, 0, 80)
+eggButton.Text = "🥚 Kéo Trứng Đến"
+eggButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+eggButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+eggButton.Font = Enum.Font.SourceSansBold
+eggButton.TextSize = 14
+eggButton.Parent = frame
+
+-- Nút đóng frame
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 25)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.Text = "✕"
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextSize = 14
+closeButton.Parent = frame
+
+-- Nút mở lại
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.new(0, 50, 0, 30)
+openButton.Position = UDim2.new(0, 10, 0, 10)
+openButton.Text = "🥚 MOD"
+openButton.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+openButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+openButton.Font = Enum.Font.SourceSansBold
+openButton.TextSize = 12
+openButton.Visible = false
+openButton.Parent = screenGui
+
+-- Đóng/mở frame
+closeButton.MouseButton1Click:Connect(function()
+    frame.Visible = false
+    openButton.Visible = true
+end)
+
+openButton.MouseButton1Click:Connect(function()
+    frame.Visible = true
+    openButton.Visible = false
+end)
+
+-- Lưu vị trí ban đầu của tất cả model
+local savedPositions = {}
+
+-- Hàm lưu tất cả vị trí hiện tại
+local function saveAllPositions()
+    local count = 0
     for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("Humanoid") and obj.Health > 0 then
+        if obj:IsA("BasePart") and obj.Parent and obj.Parent:IsA("Model") then
             local model = obj.Parent
-            if model and model:IsA("Model") then
-                local name = model.Name:lower()
-                -- Kiểm tra nếu không phải là người chơi
-                local isPlayer = false
-                for _, plr in pairs(Players:GetPlayers()) do
-                    if plr.Character == model then
-                        isPlayer = true
-                        break
-                    end
-                end
-                
-                if not isPlayer then
-                    monsters[model] = obj
-                end
+            -- Chỉ lưu các part chính (root part)
+            if obj.Name == "HumanoidRootPart" or obj.Name == "Torso" or obj.Name == "UpperTorso" then
+                savedPositions[model] = obj.CFrame
+                count = count + 1
             end
         end
     end
-    
-    return monsters
+    return count
 end
 
--- Hàm tìm trứng
-local function findEggs()
-    local foundEggs = {}
-    
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        local name = obj.Name:lower()
-        if name:find("egg") or name:find("trứng") or name:find("golden") then
-            if obj:IsA("Part") or obj:IsA("MeshPart") then
-                if obj.Size.Magnitude < 20 then
-                    table.insert(foundEggs, obj)
-                end
-            end
-        end
-    end
-    
-    return foundEggs
-end
+-- Tự động lưu vị trí ban đầu
+wait(1)
+local saved = saveAllPositions()
+print("[BTMod] Đã lưu vị trí của " .. saved .. " model!")
 
--- Hàm lưu vị trí gốc của quái vật (CHẠY NGAY LẬP TỨC)
-local function saveMonsterPositions()
-    local monsters = findMonsters()
-    local savedCount = 0
-    
-    for monster, humanoid in pairs(monsters) do
-        if monster and monster.Parent then
-            -- Tìm root part
-            local rootPart = monster:FindFirstChild("HumanoidRootPart") or 
-                           monster:FindFirstChild("Torso") or
-                           monster:FindFirstChild("UpperTorso")
-            
+-- Nút TP quái vật
+tpButton.MouseButton1Click:Connect(function()
+    local tpCount = 0
+    for model, cframe in pairs(savedPositions) do
+        if model and model.Parent then
+            local rootPart = model:FindFirstChild("HumanoidRootPart") or 
+                           model:FindFirstChild("Torso") or 
+                           model:FindFirstChild("UpperTorso")
             if rootPart and rootPart:IsA("BasePart") then
-                -- Lưu vị trí CHÍNH XÁC
-                originalPositions[monster] = {
-                    CFrame = rootPart.CFrame,
-                    Position = rootPart.Position,
-                    Rotation = rootPart.Rotation
-                }
-                savedCount = savedCount + 1
-                print("[BTMod] Đã lưu vị trí của: " .. monster.Name)
-            end
-        end
-    end
-    
-    return savedCount
-end
-
--- Hàm teleport quái vật về vị trí gốc (SỬA LẠI)
-local function teleportMonstersBack()
-    local monsters = findMonsters()
-    local teleportedCount = 0
-    
-    for monster, humanoid in pairs(monsters) do
-        if monster and monster.Parent then
-            local rootPart = monster:FindFirstChild("HumanoidRootPart") or 
-                           monster:FindFirstChild("Torso") or
-                           monster:FindFirstChild("UpperTorso")
-            
-            local savedData = originalPositions[monster]
-            
-            if rootPart and rootPart:IsA("BasePart") and savedData then
                 pcall(function()
-                    -- Teleport TRỰC TIẾP (không dùng tween để chắc chắn)
-                    rootPart.CFrame = savedData.CFrame
-                    rootPart.Position = savedData.Position
-                    rootPart.Rotation = savedData.Rotation
-                    
-                    -- Reset vận tốc
+                    rootPart.CFrame = cframe
                     rootPart.Velocity = Vector3.new(0, 0, 0)
                     rootPart.RotVelocity = Vector3.new(0, 0, 0)
                     rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                     rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                    
-                    -- Khôi phục tốc độ
-                    if humanoid and originalSpeed[monster] then
-                        humanoid.WalkSpeed = originalSpeed[monster]
-                    end
-                    
-                    teleportedCount = teleportedCount + 1
-                    print("[BTMod] Đã TP " .. monster.Name .. " về vị trí gốc!")
+                    tpCount = tpCount + 1
                 end)
             end
         end
     end
     
-    return teleportedCount
-end
+    tpButton.Text = "✅ Đã TP " .. tpCount .. " Model!"
+    wait(2)
+    tpButton.Text = "🔄 TP Quái Về Chỗ Cũ"
+    print("[BTMod] Đã teleport " .. tpCount .. " model về vị trí cũ!")
+end)
 
--- Hàm làm chậm quái vật
-local function slowMonsters(speedMultiplier)
-    if not isRunning then return 0 end
-    
-    local monsters = findMonsters()
-    local slowedCount = 0
-    
-    for monster, humanoid in pairs(monsters) do
-        if monster and monster.Parent and humanoid then
-            if not originalSpeed[monster] then
-                originalSpeed[monster] = humanoid.WalkSpeed
-            end
-            
-            local newSpeed = math.max(originalSpeed[monster] * 0.05, 0.1)
-            if speedMultiplier then
-                newSpeed = math.max(originalSpeed[monster] * speedMultiplier, 0.1)
-            end
-            
-            humanoid.WalkSpeed = newSpeed
-            slowedCount = slowedCount + 1
-        end
-    end
-    
-    return slowedCount
-end
-
--- Hàm vô hiệu hóa tấn công
-local function disableAttacks()
-    if not isRunning then return 0 end
-    
-    local monsters = findMonsters()
-    local disabledCount = 0
-    
-    for monster, humanoid in pairs(monsters) do
-        if monster and monster.Parent then
-            if humanoid then
-                pcall(function()
-                    humanoid.WalkSpeed = 0.1
-                    humanoid.JumpPower = 0
-                end)
-            end
-            
-            for _, descendant in pairs(monster:GetDescendants()) do
-                if descendant:IsA("Tool") then
-                    pcall(function()
-                        descendant:Destroy()
-                        disabledCount = disabledCount + 1
-                    end)
-                end
-            end
-        end
-    end
-    
-    return disabledCount
-end
-
--- Hàm teleport trứng đến người chơi
-local function teleportEggToPlayer()
+-- Nút kéo trứng
+eggButton.MouseButton1Click:Connect(function()
     local character = player.Character
-    if not character then return false end
+    if not character then
+        print("[BTMod] Bạn chưa có nhân vật!")
+        return
+    end
     
     local root = character:FindFirstChild("HumanoidRootPart")
-    if not root then return false end
+    if not root then
+        print("[BTMod] Không tìm thấy nhân vật!")
+        return
+    end
     
-    eggs = findEggs()
-    local teleportedCount = 0
-    
-    for _, egg in pairs(eggs) do
-        if egg and egg.Parent then
-            pcall(function()
-                local newPos = root.Position + Vector3.new(0, 5, 0)
-                egg.CFrame = CFrame.new(newPos)
-                egg.Anchored = false
-                teleportedCount = teleportedCount + 1
-            end)
+    local eggCount = 0
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local name = obj.Name:lower()
+            if name:find("egg") or name:find("trung") or name:find("trứng") or name:find("golden") then
+                pcall(function()
+                    obj.CFrame = root.CFrame * CFrame.new(0, 0, -3)
+                    obj.Anchored = false
+                    obj.Velocity = Vector3.new(0, 0, 0)
+                    eggCount = eggCount + 1
+                end)
+            end
         end
     end
     
-    return teleportedCount
-end
+    eggButton.Text = "✅ Đã kéo " .. eggCount .. " trứng!"
+    wait(2)
+    eggButton.Text = "🥚 Kéo Trứng Đến"
+    print("[BTMod] Đã kéo " .. eggCount .. " quả trứng đến gần!")
+end)
 
--- Hàm tự động lấy trứng
-local function autoStealEggs()
-    spawn(function()
-        while autoSteal and isRunning do
-            local character = player.Character
-            if character then
-                local root = character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    eggs = findEggs()
-                    for _, egg in pairs(eggs) do
-                        if egg and egg.Parent then
-                            pcall(function()
-                                egg.CFrame = root.CFrame * CFrame.new(0, 0, -3)
-                                egg.Anchored = false
-                                egg.Touched:Fire(root)
-                            end)
-                        end
-                    end
-                end
-            end
-            wait(0.5)
-        end
-    end)
-end
-
--- Hàm tạo GUI
-local function createGUI()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "BTModGUI"
-    screenGui.Parent = player.PlayerGui
-    
-    -- Tạo frame chính
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 300, 0, 400)
-    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 0)
-    mainFrame.BorderSizePixel = 2
-    mainFrame.Parent = screenGui
-    
-    -- Nút đóng/mở GUI
-    local closeButton = Instance.new("TextButton")
-    closeButton.Size = UDim2.new(0, 30, 0, 30)
-    closeButton.Position = UDim2.new(1, -35, 0, 5)
-    closeButton.Text = "✕"
-    closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeButton.Font = Enum.Font.SourceSansBold
-    closeButton.TextSize = 18
-    closeButton.Parent = mainFrame
-    
-    -- Tiêu đề
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -50, 0, 35)
-    title.Position = UDim2.new(0, 10, 0, 5)
-    title.Text = "🥚 BTMod - Trộm Trứng Pro"
-    title.TextColor3 = Color3.fromRGB(255, 255, 0)
-    title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    title.Font = Enum.Font.SourceSansBold
-    title.TextSize = 16
-    title.Parent = mainFrame
-    
-    -- Nút TẮT/MỞ script
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Size = UDim2.new(1, -20, 0, 45)
-    toggleButton.Position = UDim2.new(0, 10, 0, 45)
-    toggleButton.Text = "✅ ĐANG BẬT - Click để TẮT"
-    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-    toggleButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-    toggleButton.Font = Enum.Font.SourceSansBold
-    toggleButton.TextSize = 14
-    toggleButton.Parent = mainFrame
-    
-    -- Nút teleport trứng
-    local teleportEggButton = Instance.new("TextButton")
-    teleportEggButton.Size = UDim2.new(1, -20, 0, 40)
-    teleportEggButton.Position = UDim2.new(0, 10, 0, 100)
-    teleportEggButton.Text = "🥚 Kéo Trứng Đến Gần"
-    teleportEggButton.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-    teleportEggButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-    teleportEggButton.Font = Enum.Font.SourceSansBold
-    teleportEggButton.TextSize = 14
-    teleportEggButton.Parent = mainFrame
-    
-    -- Nút tự động lấy trứng
-    local autoStealButton = Instance.new("TextButton")
-    autoStealButton.Size = UDim2.new(1, -20, 0, 40)
-    autoStealButton.Position = UDim2.new(0, 10, 0, 150)
-    autoStealButton.Text = "🤖 Tự Động Lấy Trứng: TẮT"
-    autoStealButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
-    autoStealButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    autoStealButton.Font = Enum.Font.SourceSansBold
-    autoStealButton.TextSize = 14
-    autoStealButton.Parent = mainFrame
-    
-    -- Nút làm chậm quái vật
-    local slowButton = Instance.new("TextButton")
-    slowButton.Size = UDim2.new(1, -20, 0, 40)
-    slowButton.Position = UDim2.new(0, 10, 0, 200)
-    slowButton.Text = "🐌 Làm Chậm Quái Vật"
-    slowButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
-    slowButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    slowButton.Font = Enum.Font.SourceSansBold
-    slowButton.TextSize = 14
-    slowButton.Parent = mainFrame
-    
-    -- Nút vô hiệu hóa tấn công
-    local disableButton = Instance.new("TextButton")
-    disableButton.Size = UDim2.new(1, -20, 0, 40)
-    disableButton.Position = UDim2.new(0, 10, 0, 250)
-    disableButton.Text = "🛡️ Vô Hiệu Hóa Tấn Công"
-    disableButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-    disableButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    disableButton.Font = Enum.Font.SourceSansBold
-    disableButton.TextSize = 14
-    disableButton.Parent = mainFrame
-    
-    -- Nút thực hiện tất cả
-    local allButton = Instance.new("TextButton")
-    allButton.Size = UDim2.new(1, -20, 0, 40)
-    allButton.Position = UDim2.new(0, 10, 0, 300)
-    allButton.Text = "⚡ Thực Hiện Tất Cả"
-    allButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-    allButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-    allButton.Font = Enum.Font.SourceSansBold
-    allButton.TextSize = 14
-    allButton.Parent = mainFrame
-    
-    -- Nút mở lại GUI khi đóng
-    local openButton = Instance.new("TextButton")
-    openButton.Name = "OpenButton"
-    openButton.Size = UDim2.new(0, 50, 0, 30)
-    openButton.Position = UDim2.new(0, 10, 0, 10)
-    openButton.Text = "🥚 BTMod"
-    openButton.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
-    openButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-    openButton.Font = Enum.Font.SourceSansBold
-    openButton.TextSize = 12
-    openButton.Visible = false
-    openButton.Parent = screenGui
-    
-    -- Nút TP về lại (ở góc phải màn hình)
-    local tpBackButton = Instance.new("TextButton")
-    tpBackButton.Name = "TPBackButton"
-    tpBackButton.Size = UDim2.new(0, 120, 0, 40)
-    tpBackButton.Position = UDim2.new(1, -130, 0, 10) -- Góc phải trên
-    tpBackButton.Text = "🔄 TP Về Lại"
-    tpBackButton.BackgroundColor3 = Color3.fromRGB(255, 0, 150)
-    tpBackButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tpBackButton.Font = Enum.Font.SourceSansBold
-    tpBackButton.TextSize = 14
-    tpBackButton.Parent = screenGui
-    
-    -- Chức năng tắt/mở script
-    toggleButton.MouseButton1Click:Connect(function()
-        isRunning = not isRunning
-        if isRunning then
-            toggleButton.Text = "✅ ĐANG BẬT - Click để TẮT"
-            toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            print("[BTMod] Script đã được BẬT!")
-        else
-            toggleButton.Text = "❌ ĐÃ TẮT - Click để MỞ"
-            toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-            print("[BTMod] Script đã được TẮT!")
-            autoSteal = false
-            autoStealButton.Text = "🤖 Tự Động Lấy Trứng: TẮT"
-            autoStealButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
-        end
-    end)
-    
-    -- Chức năng TP về lại (SỬA LẠI)
-    tpBackButton.MouseButton1Click:Connect(function()
-        -- Lưu vị trí mới nhất trước khi TP
-        saveMonsterPositions()
-        
-        local count = teleportMonstersBack()
-        
-        if count > 0 then
-            tpBackButton.Text = "✅ Đã TP " .. count .. " quái!"
-            print("[BTMod] Đã đưa " .. count .. " quái vật về vị trí gốc!")
-        else
-            tpBackButton.Text = "❌ Không có quái!"
-            print("[BTMod] Không tìm thấy quái vật để TP!")
-        end
-        
-        wait(2)
-        tpBackButton.Text = "🔄 TP Về Lại"
-    end)
-    
-    -- Chức năng teleport trứng
-    teleportEggButton.MouseButton1Click:Connect(function()
-        if isRunning then
-            local count = teleportEggToPlayer()
-            print("[BTMod] Đã kéo " .. count .. " quả trứng đến gần!")
-        else
-            print("[BTMod] Script đang TẮT!")
-        end
-    end)
-    
-    -- Chức năng tự động lấy trứng
-    autoStealButton.MouseButton1Click:Connect(function()
-        if isRunning then
-            autoSteal = not autoSteal
-            if autoSteal then
-                autoStealButton.Text = "🤖 Tự Động Lấy Trứng: BẬT"
-                autoStealButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-                print("[BTMod] Tự động lấy trứng đã BẬT!")
-                autoStealEggs()
-            else
-                autoStealButton.Text = "🤖 Tự Động Lấy Trứng: TẮT"
-                autoStealButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
-                print("[BTMod] Tự động lấy trứng đã TẮT!")
-            end
-        end
-    end)
-    
-    -- Chức năng làm chậm
-    slowButton.MouseButton1Click:Connect(function()
-        if isRunning then
-            -- Lưu vị trí trước khi làm chậm
-            saveMonsterPositions()
-            local count = slowMonsters(0.05)
-            print("[BTMod] Đã làm chậm " .. count .. " quái vật!")
-        end
-    end)
-    
-    -- Chức năng vô hiệu hóa
-    disableButton.MouseButton1Click:Connect(function()
-        if isRunning then
-            local count = disableAttacks()
-            print("[BTMod] Đã vô hiệu hóa " .. count .. " quái vật!")
-        end
-    end)
-    
-    -- Thực hiện tất cả
-    allButton.MouseButton1Click:Connect(function()
-        if isRunning then
-            saveMonsterPositions()
-            local eggsCount = teleportEggToPlayer()
-            local slowed = slowMonsters(0.05)
-            local disabled = disableAttacks()
-            print("[BTMod] Kết quả: Trứng " .. eggsCount .. " | Làm chậm " .. slowed .. " | Vô hiệu " .. disabled)
-        end
-    end)
-    
-    -- Chức năng đóng/mở GUI
-    closeButton.MouseButton1Click:Connect(function()
-        mainFrame.Visible = false
-        openButton.Visible = true
-    end)
-    
-    openButton.MouseButton1Click:Connect(function()
-        mainFrame.Visible = true
-        openButton.Visible = false
-    end)
-end
-
--- Hàm theo dõi quái vật mới
-local function watchForNewMonsters()
-    Workspace.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("Model") and isRunning then
-            wait(1) -- Đợi model load xong
-            local humanoid = descendant:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                -- Lưu vị trí ngay khi quái vật mới xuất hiện
-                local rootPart = descendant:FindFirstChild("HumanoidRootPart") or 
-                               descendant:FindFirstChild("Torso")
-                if rootPart then
-                    originalPositions[descendant] = {
-                        CFrame = rootPart.CFrame,
-                        Position = rootPart.Position,
-                        Rotation = rootPart.Rotation
-                    }
-                end
-                
-                if isRunning then
-                    slowMonsters(0.05)
-                    disableAttacks()
-                end
-            end
-        end
-    end)
-end
-
--- Khởi tạo
-local function init()
-    print("=" .. string.rep("=", 60) .. "=")
-    print("[BTMod] Script Đã Được Tải!")
-    print("[BTMod] Phiên bản: " .. BTMod.Version)
-    print("[BTMod] Game: Lấy trộm một quả trứng")
-    print("[BTMod] Nút '🔄 TP Về Lại' ở góc phải màn hình!")
-    print("=" .. string.rep("=", 60) .. "=")
-    
-    createGUI()
-    watchForNewMonsters()
-    
-    -- Lưu vị trí quái vật NGAY LẬP TỨC khi script chạy
-    wait(1)
-    local savedCount = saveMonsterPositions()
-    print("[BTMod] Đã lưu vị trí của " .. savedCount .. " quái vật!")
-    
-    -- Lưu lại sau mỗi 10 giây để cập nhật vị trí mới
-    spawn(function()
-        while true do
-            wait(10)
-            if isRunning then
-                saveMonsterPositions()
-            end
-        end
-    end)
-    
-    -- Tự động áp dụng khi vào game
-    if BTMod.Enabled then
-        slowMonsters(0.05)
-        disableAttacks()
+-- Tự động lưu vị trí mỗi 15 giây
+spawn(function()
+    while true do
+        wait(15)
+        saveAllPositions()
     end
-end
+end)
 
-init()
+print("[BTMod] Script đã chạy thành công!")
