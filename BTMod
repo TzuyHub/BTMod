@@ -1,11 +1,11 @@
 -- Script: BTMod
 -- Game: Lấy trộm một quả trứng (Steal an Egg)
--- Chức năng: Dịch chuyển trứng, teleport, làm chậm quái vật
+-- Chức năng: Làm chậm quái vật, teleport trứng, TP quái vật về chỗ cũ
 
 -- Khởi tạo
 local BTMod = {}
 BTMod.Name = "BTMod"
-BTMod.Version = "3.0.0"
+BTMod.Version = "4.0.0"
 BTMod.Enabled = true
 
 -- Services
@@ -13,11 +13,11 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 -- Biến lưu trữ
 local player = Players.LocalPlayer
 local originalSpeed = {}
+local originalPositions = {} -- Lưu vị trí gốc của quái vật
 local isRunning = true
 local autoSteal = false
 local eggs = {}
@@ -66,9 +66,8 @@ local function findEggs()
             local name = obj.Name:lower()
             if name:find("egg") or name:find("trứng") or name:find("golden") then
                 if obj:IsA("Part") or obj:IsA("MeshPart") or obj:IsA("Model") then
-                    -- Kiểm tra xem có phải là trứng không
                     if obj:IsA("Part") or obj:IsA("MeshPart") then
-                        if obj.Size.Magnitude < 20 then -- Trứng thường nhỏ
+                        if obj.Size.Magnitude < 20 then
                             table.insert(foundEggs, obj)
                         end
                     end
@@ -78,13 +77,72 @@ local function findEggs()
     end
     
     searchIn(Workspace)
-    
     return foundEggs
+end
+
+-- Hàm lưu vị trí gốc của quái vật
+local function saveMonsterPositions()
+    local monsters = findMonsters()
+    local savedCount = 0
+    
+    for monster, humanoid in pairs(monsters) do
+        if monster and monster.Parent then
+            local rootPart = monster:FindFirstChild("HumanoidRootPart") or monster:FindFirstChild("Torso")
+            if rootPart and not originalPositions[monster] then
+                originalPositions[monster] = rootPart.CFrame
+                savedCount = savedCount + 1
+            end
+        end
+    end
+    
+    return savedCount
+end
+
+-- Hàm teleport quái vật về vị trí gốc
+local function teleportMonstersBack()
+    local monsters = findMonsters()
+    local teleportedCount = 0
+    
+    for monster, humanoid in pairs(monsters) do
+        if monster and monster.Parent then
+            local rootPart = monster:FindFirstChild("HumanoidRootPart") or monster:FindFirstChild("Torso")
+            local originalCFrame = originalPositions[monster]
+            
+            if rootPart and originalCFrame then
+                pcall(function()
+                    -- Tạo tween mượt mà
+                    local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear)
+                    local tween = TweenService:Create(rootPart, tweenInfo, {
+                        CFrame = originalCFrame
+                    })
+                    tween:Play()
+                    
+                    -- Reset vận tốc
+                    if rootPart:IsA("BasePart") then
+                        rootPart.Velocity = Vector3.new(0, 0, 0)
+                        rootPart.RotVelocity = Vector3.new(0, 0, 0)
+                    end
+                    
+                    -- Khôi phục tốc độ
+                    if humanoid and originalSpeed[monster] then
+                        humanoid.WalkSpeed = originalSpeed[monster]
+                    end
+                    
+                    teleportedCount = teleportedCount + 1
+                end)
+            end
+        end
+    end
+    
+    return teleportedCount
 end
 
 -- Hàm làm chậm quái vật
 local function slowMonsters(speedMultiplier)
     if not isRunning then return 0 end
+    
+    -- Lưu vị trí gốc trước khi làm chậm
+    saveMonsterPositions()
     
     local monsters = findMonsters()
     local slowedCount = 0
@@ -117,7 +175,6 @@ local function disableAttacks()
     
     for monster, humanoid in pairs(monsters) do
         if monster and monster.Parent then
-            -- Làm quái vật không thể tấn công bằng cách đóng băng
             if humanoid then
                 pcall(function()
                     humanoid.WalkSpeed = 0.1
@@ -125,7 +182,6 @@ local function disableAttacks()
                 end)
             end
             
-            -- Xóa các tool
             for _, descendant in pairs(monster:GetDescendants()) do
                 if descendant:IsA("Tool") then
                     pcall(function()
@@ -154,12 +210,10 @@ local function teleportEggToPlayer()
     for _, egg in pairs(eggs) do
         if egg and egg.Parent then
             pcall(function()
-                -- Lưu vị trí gốc
                 if not egg:GetAttribute("BTMod_OriginalPos") then
                     egg:SetAttribute("BTMod_OriginalPos", egg.Position)
                 end
                 
-                -- Teleport trứng đến gần người chơi
                 local newPos = root.Position + Vector3.new(0, 5, 0)
                 egg.CFrame = CFrame.new(newPos)
                 egg.Anchored = false
@@ -169,28 +223,6 @@ local function teleportEggToPlayer()
     end
     
     return teleportedCount
-end
-
--- Hàm dịch chuyển trứng mượt mà
-local function smoothTeleportEgg()
-    local character = player.Character
-    if not character then return end
-    
-    local root = character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    eggs = findEggs()
-    
-    for _, egg in pairs(eggs) do
-        if egg and egg.Parent then
-            pcall(function()
-                local targetPos = root.Position + Vector3.new(0, 3, 0)
-                local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear)
-                local tween = TweenService:Create(egg, tweenInfo, {Position = targetPos})
-                tween:Play()
-            end)
-        end
-    end
 end
 
 -- Hàm tự động lấy trứng
@@ -205,20 +237,9 @@ local function autoStealEggs()
                     for _, egg in pairs(eggs) do
                         if egg and egg.Parent then
                             pcall(function()
-                                -- Teleport trứng vào người chơi
                                 egg.CFrame = root.CFrame * CFrame.new(0, 0, -3)
                                 egg.Anchored = false
-                                
-                                -- Kích hoạt sự kiện chạm
                                 egg.Touched:Fire(root)
-                                
-                                -- Thử lấy trứng
-                                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                                if humanoid then
-                                    local tool = Instance.new("Tool")
-                                    tool.Name = egg.Name
-                                    tool.Parent = character
-                                end
                             end)
                         end
                     end
@@ -238,8 +259,8 @@ local function createGUI()
     -- Tạo frame chính
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 300, 0, 350)
-    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
+    mainFrame.Size = UDim2.new(0, 300, 0, 400)
+    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
     mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 0)
     mainFrame.BorderSizePixel = 2
@@ -346,6 +367,18 @@ local function createGUI()
     openButton.Visible = false
     openButton.Parent = screenGui
     
+    -- Nút TP về lại (ở góc phải màn hình)
+    local tpBackButton = Instance.new("TextButton")
+    tpBackButton.Name = "TPBackButton"
+    tpBackButton.Size = UDim2.new(0, 120, 0, 40)
+    tpBackButton.Position = UDim2.new(1, -130, 0, 10) -- Góc phải trên
+    tpBackButton.Text = "🔄 TP Về Lại"
+    tpBackButton.BackgroundColor3 = Color3.fromRGB(255, 0, 150)
+    tpBackButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tpBackButton.Font = Enum.Font.SourceSansBold
+    tpBackButton.TextSize = 14
+    tpBackButton.Parent = screenGui
+    
     -- Chức năng tắt/mở script
     toggleButton.MouseButton1Click:Connect(function()
         isRunning = not isRunning
@@ -361,6 +394,17 @@ local function createGUI()
             autoStealButton.Text = "🤖 Tự Động Lấy Trứng: TẮT"
             autoStealButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
         end
+    end)
+    
+    -- Chức năng TP về lại
+    tpBackButton.MouseButton1Click:Connect(function()
+        local count = teleportMonstersBack()
+        print("[BTMod] Đã đưa " .. count .. " quái vật về vị trí gốc!")
+        
+        -- Hiệu ứng thông báo
+        tpBackButton.Text = "✅ Đã TP!"
+        wait(2)
+        tpBackButton.Text = "🔄 TP Về Lại"
     end)
     
     -- Chức năng teleport trứng
@@ -453,18 +497,20 @@ local function init()
     print("[BTMod] Script Đã Được Tải!")
     print("[BTMod] Phiên bản: " .. BTMod.Version)
     print("[BTMod] Game: Lấy trộm một quả trứng")
-    print("[BTMod] Cách dùng: Click '🥚 Kéo Trứng Đến Gần' để lấy trứng!")
+    print("[BTMod] Nút '🔄 TP Về Lại' ở góc phải màn hình!")
     print("=" .. string.rep("=", 60) .. "=")
     
     createGUI()
     watchForNewMonsters()
     
-    -- Tự động áp dụng khi vào game
+    -- Tự động lưu vị trí quái vật khi vào game
     wait(2)
+    saveMonsterPositions()
+    
+    -- Tự động áp dụng khi vào game
     if BTMod.Enabled then
         slowMonsters(0.05)
         disableAttacks()
-        teleportEggToPlayer()
     end
 end
 
