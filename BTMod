@@ -7,6 +7,7 @@ local BTMod = {}
 BTMod.Name = "BTMod"
 BTMod.Version = "1.0.0"
 BTMod.Enabled = true
+BTMod.AutoEnabled = true -- Tự động bật khi vào game
 
 -- Services
 local Players = game:GetService("Players")
@@ -16,6 +17,7 @@ local RunService = game:GetService("RunService")
 -- Biến lưu trữ
 local player = Players.LocalPlayer
 local originalSpeed = {}
+local isRunning = true -- Trạng thái hoạt động
 
 -- Hàm tìm quái vật
 local function findMonsters()
@@ -53,8 +55,10 @@ local function findMonsters()
     return monsters
 end
 
--- Hàm làm chậm quái vật (rất chậm nhưng vẫn di chuyển được)
+-- Hàm làm chậm quái vật
 local function slowMonsters(speedMultiplier)
+    if not isRunning then return 0 end
+    
     local monsters = findMonsters()
     local slowedCount = 0
     
@@ -65,7 +69,7 @@ local function slowMonsters(speedMultiplier)
                 originalSpeed[monster] = humanoid.WalkSpeed
             end
             
-            -- Đặt tốc độ chậm (10% tốc độ gốc hoặc tốc độ tối thiểu)
+            -- Đặt tốc độ chậm
             local newSpeed = math.max(originalSpeed[monster] * 0.1, 0.5)
             if speedMultiplier then
                 newSpeed = math.max(originalSpeed[monster] * speedMultiplier, 0.3)
@@ -81,8 +85,10 @@ local function slowMonsters(speedMultiplier)
     return slowedCount
 end
 
--- Hàm vô hiệu hóa tấn công (chỉ vô hiệu hóa khả năng gây sát thương)
+-- Hàm vô hiệu hóa tấn công
 local function disableAttacks()
+    if not isRunning then return 0 end
+    
     local monsters = findMonsters()
     local disabledCount = 0
     
@@ -111,16 +117,6 @@ local function disableAttacks()
                     end)
                 end
             end
-            
-            -- Vô hiệu hóa Humanoid attack
-            if humanoid then
-                pcall(function()
-                    humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-                    -- Không cho humanoid gây sát thương
-                    humanoid.MaxHealth = math.huge
-                    humanoid.Health = math.huge
-                end)
-            end
         end
     end
     
@@ -140,7 +136,7 @@ local function restoreSpeed()
     originalSpeed = {}
 end
 
--- Hàm tạo GUI đẹp hơn
+-- Hàm tạo GUI
 local function createGUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "BTModGUI"
@@ -149,28 +145,50 @@ local function createGUI()
     -- Tạo frame chính
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 280, 0, 200)
-    mainFrame.Position = UDim2.new(0.5, -140, 0.5, -100)
+    mainFrame.Size = UDim2.new(0, 280, 0, 250)
+    mainFrame.Position = UDim2.new(0.5, -140, 0.5, -125)
     mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 0)
     mainFrame.BorderSizePixel = 2
     mainFrame.Parent = screenGui
     
+    -- Nút đóng/mở GUI
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 30, 0, 30)
+    closeButton.Position = UDim2.new(1, -35, 0, 5)
+    closeButton.Text = "✕"
+    closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.Font = Enum.Font.SourceSansBold
+    closeButton.TextSize = 18
+    closeButton.Parent = mainFrame
+    
     -- Tiêu đề
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 0, 35)
-    title.Position = UDim2.new(0, 10, 0, 10)
-    title.Text = "🥚 BTMod - Trộm Trứng Dễ Dàng"
+    title.Size = UDim2.new(1, -50, 0, 35)
+    title.Position = UDim2.new(0, 10, 0, 5)
+    title.Text = "🥚 BTMod - Trộm Trứng"
     title.TextColor3 = Color3.fromRGB(255, 255, 0)
     title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     title.Font = Enum.Font.SourceSansBold
     title.TextSize = 16
     title.Parent = mainFrame
     
+    -- Nút TẮT/MỞ script
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(1, -20, 0, 45)
+    toggleButton.Position = UDim2.new(0, 10, 0, 45)
+    toggleButton.Text = "✅ ĐANG BẬT - Click để TẮT"
+    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    toggleButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+    toggleButton.Font = Enum.Font.SourceSansBold
+    toggleButton.TextSize = 14
+    toggleButton.Parent = mainFrame
+    
     -- Nút làm chậm quái vật
     local slowButton = Instance.new("TextButton")
     slowButton.Size = UDim2.new(1, -20, 0, 40)
-    slowButton.Position = UDim2.new(0, 10, 0, 55)
+    slowButton.Position = UDim2.new(0, 10, 0, 100)
     slowButton.Text = "🐌 Làm Chậm Quái Vật (10%)"
     slowButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
     slowButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -181,7 +199,7 @@ local function createGUI()
     -- Nút làm chậm nhẹ
     local lightSlowButton = Instance.new("TextButton")
     lightSlowButton.Size = UDim2.new(1, -20, 0, 40)
-    lightSlowButton.Position = UDim2.new(0, 10, 0, 100)
+    lightSlowButton.Position = UDim2.new(0, 10, 0, 150)
     lightSlowButton.Text = "🐢 Làm Chậm Nhẹ (50%)"
     lightSlowButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
     lightSlowButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -192,7 +210,7 @@ local function createGUI()
     -- Nút vô hiệu hóa tấn công
     local disableButton = Instance.new("TextButton")
     disableButton.Size = UDim2.new(1, -20, 0, 40)
-    disableButton.Position = UDim2.new(0, 10, 0, 145)
+    disableButton.Position = UDim2.new(0, 10, 0, 200)
     disableButton.Text = "🛡️ Không Bị Tấn Công"
     disableButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
     disableButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -200,34 +218,89 @@ local function createGUI()
     disableButton.TextSize = 14
     disableButton.Parent = mainFrame
     
-    -- Kết nối các nút
+    -- Nút mở lại GUI khi đóng
+    local openButton = Instance.new("TextButton")
+    openButton.Name = "OpenButton"
+    openButton.Size = UDim2.new(0, 50, 0, 30)
+    openButton.Position = UDim2.new(0, 10, 0, 10)
+    openButton.Text = "🥚 BTMod"
+    openButton.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+    openButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+    openButton.Font = Enum.Font.SourceSansBold
+    openButton.TextSize = 12
+    openButton.Visible = false
+    openButton.Parent = screenGui
+    
+    -- Chức năng tắt/mở script
+    toggleButton.MouseButton1Click:Connect(function()
+        isRunning = not isRunning
+        if isRunning then
+            toggleButton.Text = "✅ ĐANG BẬT - Click để TẮT"
+            toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            print("[BTMod] Script đã được BẬT!")
+            -- Tự động áp dụng lại các chức năng
+            slowMonsters(0.1)
+            disableAttacks()
+        else
+            toggleButton.Text = "❌ ĐÃ TẮT - Click để MỞ"
+            toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+            print("[BTMod] Script đã được TẮT!")
+            -- Khôi phục tốc độ gốc
+            restoreSpeed()
+        end
+    end)
+    
+    -- Chức năng đóng/mở GUI
+    closeButton.MouseButton1Click:Connect(function()
+        mainFrame.Visible = false
+        openButton.Visible = true
+    end)
+    
+    openButton.MouseButton1Click:Connect(function()
+        mainFrame.Visible = true
+        openButton.Visible = false
+    end)
+    
+    -- Kết nối các nút chức năng
     slowButton.MouseButton1Click:Connect(function()
-        local count = slowMonsters(0.1)
-        print("[BTMod] Đã làm chậm " .. count .. " quái vật xuống 10% tốc độ!")
+        if isRunning then
+            local count = slowMonsters(0.1)
+            print("[BTMod] Đã làm chậm " .. count .. " quái vật xuống 10% tốc độ!")
+        else
+            print("[BTMod] Script đang TẮT, hãy BẬT trước!")
+        end
     end)
     
     lightSlowButton.MouseButton1Click:Connect(function()
-        local count = slowMonsters(0.5)
-        print("[BTMod] Đã làm chậm " .. count .. " quái vật xuống 50% tốc độ!")
+        if isRunning then
+            local count = slowMonsters(0.5)
+            print("[BTMod] Đã làm chậm " .. count .. " quái vật xuống 50% tốc độ!")
+        else
+            print("[BTMod] Script đang TẮT, hãy BẬT trước!")
+        end
     end)
     
     disableButton.MouseButton1Click:Connect(function()
-        local count = disableAttacks()
-        print("[BTMod] Đã vô hiệu hóa tấn công của " .. count .. " quái vật!")
+        if isRunning then
+            local count = disableAttacks()
+            print("[BTMod] Đã vô hiệu hóa tấn công của " .. count .. " quái vật!")
+        else
+            print("[BTMod] Script đang TẮT, hãy BẬT trước!")
+        end
     end)
 end
 
 -- Hàm theo dõi quái vật mới
 local function watchForNewMonsters()
     Workspace.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("Model") then
+        if descendant:IsA("Model") and isRunning then
             local name = descendant.Name:lower()
             if name:find("monster") or name:find("quái") or 
                name:find("guard") or name:find("canh") or
                name:find("enemy") or name:find("địch") or
                name:find("beast") or name:find("thú") then
                 wait(0.5)
-                if BTMod.Enabled then
+                if isRunning then
                     slowMonsters(0.1)
                     disableAttacks()
                 end
@@ -242,7 +315,7 @@ local function init()
     print("[BTMod] Script Đã Được Tải!")
     print("[BTMod] Phiên bản: " .. BTMod.Version)
     print("[BTMod] Game: Lấy trộm một quả trứng")
-    print("[BTMod] Chức năng: Làm chậm quái vật + Vô hiệu hóa tấn công")
+    print("[BTMod] Nút xanh lá = BẬT/TẮT script")
     print("=" .. string.rep("=", 50) .. "=")
     
     createGUI()
@@ -250,8 +323,10 @@ local function init()
     
     -- Tự động áp dụng khi vào game
     wait(2)
-    slowMonsters(0.1)
-    disableAttacks()
+    if BTMod.AutoEnabled then
+        slowMonsters(0.1)
+        disableAttacks()
+    end
 end
 
 init()
