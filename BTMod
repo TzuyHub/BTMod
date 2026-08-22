@@ -1,6 +1,6 @@
 -- Script: BTMod
 -- Game: Lấy trộm một quả trứng (Steal an Egg)
--- Chức năng: Xóa quái vật, làm chậm quái vật, vô hiệu hóa tấn công
+-- Chức năng: Làm chậm quái vật và vô hiệu hóa tấn công
 
 -- Khởi tạo
 local BTMod = {}
@@ -12,43 +12,38 @@ BTMod.Enabled = true
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 -- Biến lưu trữ
 local player = Players.LocalPlayer
 local originalSpeed = {}
-local monsterList = {}
 
 -- Hàm tìm quái vật
 local function findMonsters()
     local monsters = {}
     
-    -- Tìm theo nhiều cách khác nhau
     local function searchIn(parent)
         for _, obj in pairs(parent:GetDescendants()) do
-            if obj:IsA("Model") or obj:IsA("Humanoid") then
-                -- Tìm theo tên
-                local name = obj.Name:lower()
-                if name:find("monster") or name:find("quái") or 
-                   name:find("guard") or name:find("canh") or
-                   name:find("enemy") or name:find("địch") or
-                   name:find("beast") or name:find("thú") then
-                    local humanoid = obj:FindFirstChildOfClass("Humanoid")
-                    if humanoid and humanoid.Health > 0 then
-                        if not monsters[obj] then
-                            monsters[obj] = humanoid
-                        end
+            if obj:IsA("Model") then
+                local humanoid = obj:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.Health > 0 then
+                    local name = obj.Name:lower()
+                    if name:find("monster") or name:find("quái") or 
+                       name:find("guard") or name:find("canh") or
+                       name:find("enemy") or name:find("địch") or
+                       name:find("beast") or name:find("thú") or
+                       name:find("scp") or name:find("entity") then
+                        monsters[obj] = humanoid
                     end
                 end
             end
         end
     end
     
-    -- Tìm trong Workspace
     searchIn(Workspace)
     
     -- Tìm trong các folder cụ thể
-    for _, folderName in pairs({"Enemies", "Monsters", "Guards", "NPCs"}) do
+    local folderNames = {"Enemies", "Monsters", "Guards", "NPCs", "Entities", "SCPs"}
+    for _, folderName in pairs(folderNames) do
         local folder = Workspace:FindFirstChild(folderName)
         if folder then
             searchIn(folder)
@@ -58,44 +53,26 @@ local function findMonsters()
     return monsters
 end
 
--- Hàm xóa quái vật
-local function deleteMonsters()
-    local monsters = findMonsters()
-    local deletedCount = 0
-    
-    for monster, humanoid in pairs(monsters) do
-        if monster and monster.Parent then
-            -- Lưu tốc độ gốc trước khi xóa
-            if humanoid and not originalSpeed[monster] then
-                originalSpeed[monster] = humanoid.WalkSpeed
-            end
-            
-            -- Xóa quái vật
-            pcall(function()
-                monster:Destroy()
-                deletedCount = deletedCount + 1
-            end)
-        end
-    end
-    
-    return deletedCount
-end
-
--- Hàm làm chậm quái vật
-local function slowMonsters()
+-- Hàm làm chậm quái vật (rất chậm nhưng vẫn di chuyển được)
+local function slowMonsters(speedMultiplier)
     local monsters = findMonsters()
     local slowedCount = 0
     
     for monster, humanoid in pairs(monsters) do
         if monster and monster.Parent and humanoid then
-            -- Lưu tốc độ gốc nếu chưa lưu
+            -- Lưu tốc độ gốc
             if not originalSpeed[monster] then
                 originalSpeed[monster] = humanoid.WalkSpeed
             end
             
-            -- Đặt tốc độ về mức tối thiểu (chậm nhất có thể)
-            if humanoid.WalkSpeed > 1 then
-                humanoid.WalkSpeed = 1 -- Tốc độ chậm nhất
+            -- Đặt tốc độ chậm (10% tốc độ gốc hoặc tốc độ tối thiểu)
+            local newSpeed = math.max(originalSpeed[monster] * 0.1, 0.5)
+            if speedMultiplier then
+                newSpeed = math.max(originalSpeed[monster] * speedMultiplier, 0.3)
+            end
+            
+            if humanoid.WalkSpeed > newSpeed then
+                humanoid.WalkSpeed = newSpeed
                 slowedCount = slowedCount + 1
             end
         end
@@ -104,37 +81,45 @@ local function slowMonsters()
     return slowedCount
 end
 
--- Hàm vô hiệu hóa tấn công
+-- Hàm vô hiệu hóa tấn công (chỉ vô hiệu hóa khả năng gây sát thương)
 local function disableAttacks()
     local monsters = findMonsters()
     local disabledCount = 0
     
     for monster, humanoid in pairs(monsters) do
         if monster and monster.Parent then
-            -- Tìm các script tấn công
-            for _, script in pairs(monster:GetDescendants()) do
-                if script:IsA("Script") or script:IsA("LocalScript") then
-                    local scriptName = script.Name:lower()
+            -- Vô hiệu hóa các script tấn công
+            for _, descendant in pairs(monster:GetDescendants()) do
+                if descendant:IsA("Script") or descendant:IsA("LocalScript") then
+                    local scriptName = descendant.Name:lower()
                     if scriptName:find("attack") or scriptName:find("tấn công") or
                        scriptName:find("damage") or scriptName:find("sát thương") or
-                       scriptName:find("hit") or scriptName:find("đánh") then
-                        -- Vô hiệu hóa script tấn công
+                       scriptName:find("hit") or scriptName:find("đánh") or
+                       scriptName:find("kill") or scriptName:find("giết") then
                         pcall(function()
-                            script.Disabled = true
+                            descendant.Disabled = true
                             disabledCount = disabledCount + 1
                         end)
                     end
                 end
-            end
-            
-            -- Tìm các tool tấn công
-            for _, tool in pairs(monster:GetDescendants()) do
-                if tool:IsA("Tool") and tool:FindFirstChild("Handle") then
+                
+                -- Vô hiệu hóa các tool vũ khí
+                if descendant:IsA("Tool") and descendant:FindFirstChild("Handle") then
                     pcall(function()
-                        tool.Enabled = false
+                        descendant.Enabled = false
                         disabledCount = disabledCount + 1
                     end)
                 end
+            end
+            
+            -- Vô hiệu hóa Humanoid attack
+            if humanoid then
+                pcall(function()
+                    humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                    -- Không cho humanoid gây sát thương
+                    humanoid.MaxHealth = math.huge
+                    humanoid.Health = math.huge
+                end)
             end
         end
     end
@@ -142,7 +127,20 @@ local function disableAttacks()
     return disabledCount
 end
 
--- Hàm tạo GUI
+-- Hàm khôi phục tốc độ
+local function restoreSpeed()
+    for monster, speed in pairs(originalSpeed) do
+        if monster and monster.Parent then
+            local humanoid = monster:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = speed
+            end
+        end
+    end
+    originalSpeed = {}
+end
+
+-- Hàm tạo GUI đẹp hơn
 local function createGUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "BTModGUI"
@@ -151,112 +149,86 @@ local function createGUI()
     -- Tạo frame chính
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 300, 0, 250)
-    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -125)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    mainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    mainFrame.Size = UDim2.new(0, 280, 0, 200)
+    mainFrame.Position = UDim2.new(0.5, -140, 0.5, -100)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 0)
     mainFrame.BorderSizePixel = 2
     mainFrame.Parent = screenGui
     
     -- Tiêu đề
     local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, -20, 0, 40)
+    title.Size = UDim2.new(1, -20, 0, 35)
     title.Position = UDim2.new(0, 10, 0, 10)
-    title.Text = "BTMod - Script"
+    title.Text = "🥚 BTMod - Trộm Trứng Dễ Dàng"
     title.TextColor3 = Color3.fromRGB(255, 255, 0)
     title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     title.Font = Enum.Font.SourceSansBold
-    title.TextSize = 20
+    title.TextSize = 16
     title.Parent = mainFrame
     
-    -- Nút xóa quái vật
-    local deleteButton = Instance.new("TextButton")
-    deleteButton.Name = "DeleteButton"
-    deleteButton.Size = UDim2.new(1, -20, 0, 40)
-    deleteButton.Position = UDim2.new(0, 10, 0, 60)
-    deleteButton.Text = "🗑️ Xóa Quái Vật"
-    deleteButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    deleteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    deleteButton.Font = Enum.Font.SourceSansBold
-    deleteButton.TextSize = 16
-    deleteButton.Parent = mainFrame
-    
-    -- Nút làm chậm
+    -- Nút làm chậm quái vật
     local slowButton = Instance.new("TextButton")
-    slowButton.Name = "SlowButton"
     slowButton.Size = UDim2.new(1, -20, 0, 40)
-    slowButton.Position = UDim2.new(0, 10, 0, 110)
-    slowButton.Text = "🐌 Làm Chậm Quái Vật"
+    slowButton.Position = UDim2.new(0, 10, 0, 55)
+    slowButton.Text = "🐌 Làm Chậm Quái Vật (10%)"
     slowButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
     slowButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     slowButton.Font = Enum.Font.SourceSansBold
-    slowButton.TextSize = 16
+    slowButton.TextSize = 14
     slowButton.Parent = mainFrame
     
-    -- Nút vô hiệu hóa tấn công
-    local disableAttackButton = Instance.new("TextButton")
-    disableAttackButton.Name = "DisableAttackButton"
-    disableAttackButton.Size = UDim2.new(1, -20, 0, 40)
-    disableAttackButton.Position = UDim2.new(0, 10, 0, 160)
-    disableAttackButton.Text = "🛡️ Vô Hiệu Hóa Tấn Công"
-    disableAttackButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-    disableAttackButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    disableAttackButton.Font = Enum.Font.SourceSansBold
-    disableAttackButton.TextSize = 16
-    disableAttackButton.Parent = mainFrame
+    -- Nút làm chậm nhẹ
+    local lightSlowButton = Instance.new("TextButton")
+    lightSlowButton.Size = UDim2.new(1, -20, 0, 40)
+    lightSlowButton.Position = UDim2.new(0, 10, 0, 100)
+    lightSlowButton.Text = "🐢 Làm Chậm Nhẹ (50%)"
+    lightSlowButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    lightSlowButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lightSlowButton.Font = Enum.Font.SourceSansBold
+    lightSlowButton.TextSize = 14
+    lightSlowButton.Parent = mainFrame
     
-    -- Nút thực hiện tất cả
-    local allButton = Instance.new("TextButton")
-    allButton.Name = "AllButton"
-    allButton.Size = UDim2.new(1, -20, 0, 40)
-    allButton.Position = UDim2.new(0, 10, 0, 210)
-    allButton.Text = "⚡ Thực Hiện Tất Cả"
-    allButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-    allButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-    allButton.Font = Enum.Font.SourceSansBold
-    allButton.TextSize = 16
-    allButton.Parent = mainFrame
+    -- Nút vô hiệu hóa tấn công
+    local disableButton = Instance.new("TextButton")
+    disableButton.Size = UDim2.new(1, -20, 0, 40)
+    disableButton.Position = UDim2.new(0, 10, 0, 145)
+    disableButton.Text = "🛡️ Không Bị Tấn Công"
+    disableButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    disableButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    disableButton.Font = Enum.Font.SourceSansBold
+    disableButton.TextSize = 14
+    disableButton.Parent = mainFrame
     
     -- Kết nối các nút
-    deleteButton.MouseButton1Click:Connect(function()
-        local count = deleteMonsters()
-        print("[BTMod] Đã xóa " .. count .. " quái vật!")
-    end)
-    
     slowButton.MouseButton1Click:Connect(function()
-        local count = slowMonsters()
-        print("[BTMod] Đã làm chậm " .. count .. " quái vật!")
+        local count = slowMonsters(0.1)
+        print("[BTMod] Đã làm chậm " .. count .. " quái vật xuống 10% tốc độ!")
     end)
     
-    disableAttackButton.MouseButton1Click:Connect(function()
+    lightSlowButton.MouseButton1Click:Connect(function()
+        local count = slowMonsters(0.5)
+        print("[BTMod] Đã làm chậm " .. count .. " quái vật xuống 50% tốc độ!")
+    end)
+    
+    disableButton.MouseButton1Click:Connect(function()
         local count = disableAttacks()
         print("[BTMod] Đã vô hiệu hóa tấn công của " .. count .. " quái vật!")
     end)
-    
-    allButton.MouseButton1Click:Connect(function()
-        local deleted = deleteMonsters()
-        local slowed = slowMonsters()
-        local disabled = disableAttacks()
-        print("[BTMod] Kết quả: Xóa " .. deleted .. " | Làm chậm " .. slowed .. " | Vô hiệu hóa " .. disabled)
-    end)
 end
 
--- Hàm theo dõi quái vật mới spawn
+-- Hàm theo dõi quái vật mới
 local function watchForNewMonsters()
-    local lastMonsterCount = 0
-    
     Workspace.DescendantAdded:Connect(function(descendant)
-        if descendant:IsA("Model") or descendant:IsA("Humanoid") then
+        if descendant:IsA("Model") then
             local name = descendant.Name:lower()
             if name:find("monster") or name:find("quái") or 
                name:find("guard") or name:find("canh") or
                name:find("enemy") or name:find("địch") or
                name:find("beast") or name:find("thú") then
-                -- Quái vật mới xuất hiện
-                wait(1) -- Đợi quái vật load xong
+                wait(0.5)
                 if BTMod.Enabled then
-                    slowMonsters()
+                    slowMonsters(0.1)
                     disableAttacks()
                 end
             end
@@ -264,27 +236,22 @@ local function watchForNewMonsters()
     end)
 end
 
--- Khởi tạo script
+-- Khởi tạo
 local function init()
-    print("[BTMod] Script đã được tải!")
+    print("=" .. string.rep("=", 50) .. "=")
+    print("[BTMod] Script Đã Được Tải!")
     print("[BTMod] Phiên bản: " .. BTMod.Version)
-    print("[BTMod] Tác giả: BTMod Team")
     print("[BTMod] Game: Lấy trộm một quả trứng")
+    print("[BTMod] Chức năng: Làm chậm quái vật + Vô hiệu hóa tấn công")
+    print("=" .. string.rep("=", 50) .. "=")
     
-    -- Tạo GUI
     createGUI()
-    
-    -- Bắt đầu theo dõi quái vật mới
     watchForNewMonsters()
     
-    -- Tự động thực hiện chức năng khi script load
+    -- Tự động áp dụng khi vào game
     wait(2)
-    if BTMod.Enabled then
-        deleteMonsters()
-        slowMonsters()
-        disableAttacks()
-    end
+    slowMonsters(0.1)
+    disableAttacks()
 end
 
--- Chạy script
 init()
