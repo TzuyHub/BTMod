@@ -1,20 +1,21 @@
 -- Script: BTMod
 -- Game: Lấy trộm một quả trứng
--- Phiên bản: 6.0 - Siêu Đơn Giản và Hiệu Quả
+-- Phiên bản: 7.0 - Auto Farm Trứng Siêu Tốc
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 
--- Tạo GUI siêu đơn giản
+-- Tạo GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BTMod"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
 -- Frame chính
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 150)
-frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+frame.Size = UDim2.new(0, 250, 0, 250)
+frame.Position = UDim2.new(0.5, -125, 0.5, -125)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BorderColor3 = Color3.fromRGB(255, 255, 0)
 frame.BorderSizePixel = 2
@@ -24,17 +25,28 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -10, 0, 30)
 title.Position = UDim2.new(0, 5, 0, 5)
-title.Text = "🥚 BTMod"
+title.Text = "🥚 BTMod - Auto Farm"
 title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 title.TextColor3 = Color3.fromRGB(255, 255, 0)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
 title.Parent = frame
 
--- Nút TP quái vật về chỗ cũ
+-- Nút Auto Farm
+local autoFarmButton = Instance.new("TextButton")
+autoFarmButton.Size = UDim2.new(1, -10, 0, 40)
+autoFarmButton.Position = UDim2.new(0, 5, 0, 40)
+autoFarmButton.Text = "🤖 AUTO FARM: TẮT"
+autoFarmButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+autoFarmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoFarmButton.Font = Enum.Font.SourceSansBold
+autoFarmButton.TextSize = 14
+autoFarmButton.Parent = frame
+
+-- Nút TP quái vật
 local tpButton = Instance.new("TextButton")
 tpButton.Size = UDim2.new(1, -10, 0, 35)
-tpButton.Position = UDim2.new(0, 5, 0, 40)
+tpButton.Position = UDim2.new(0, 5, 0, 85)
 tpButton.Text = "🔄 TP Quái Về Chỗ Cũ"
 tpButton.BackgroundColor3 = Color3.fromRGB(255, 0, 150)
 tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -45,7 +57,7 @@ tpButton.Parent = frame
 -- Nút kéo trứng
 local eggButton = Instance.new("TextButton")
 eggButton.Size = UDim2.new(1, -10, 0, 35)
-eggButton.Position = UDim2.new(0, 5, 0, 80)
+eggButton.Position = UDim2.new(0, 5, 0, 125)
 eggButton.Text = "🥚 Kéo Trứng Đến"
 eggButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
 eggButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -87,18 +99,16 @@ openButton.MouseButton1Click:Connect(function()
     openButton.Visible = false
 end)
 
--- Lưu vị trí ban đầu của tất cả model
+-- Lưu vị trí ban đầu
 local savedPositions = {}
 
--- Hàm lưu tất cả vị trí hiện tại
+-- Hàm lưu tất cả vị trí
 local function saveAllPositions()
     local count = 0
     for _, obj in pairs(Workspace:GetDescendants()) do
         if obj:IsA("BasePart") and obj.Parent and obj.Parent:IsA("Model") then
-            local model = obj.Parent
-            -- Chỉ lưu các part chính (root part)
             if obj.Name == "HumanoidRootPart" or obj.Name == "Torso" or obj.Name == "UpperTorso" then
-                savedPositions[model] = obj.CFrame
+                savedPositions[obj.Parent] = obj.CFrame
                 count = count + 1
             end
         end
@@ -106,10 +116,157 @@ local function saveAllPositions()
     return count
 end
 
--- Tự động lưu vị trí ban đầu
+-- Tự động lưu vị trí
 wait(1)
-local saved = saveAllPositions()
-print("[BTMod] Đã lưu vị trí của " .. saved .. " model!")
+saveAllPositions()
+
+-- Biến điều khiển auto farm
+local autoFarm = false
+local currentTween = nil
+
+-- Hàm tìm trứng xịn nhất
+local function findBestEgg()
+    local bestEgg = nil
+    local bestValue = 0
+    
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local name = obj.Name:lower()
+            if name:find("egg") or name:find("trung") or name:find("trứng") or name:find("golden") then
+                -- Đánh giá độ xịn của trứng
+                local value = 0
+                
+                -- Trứng to hơn = xịn hơn
+                value = value + obj.Size.Magnitude
+                
+                -- Trứng vàng = xịn nhất
+                if name:find("golden") or name:find("vàng") or name:find("vang") then
+                    value = value + 1000
+                end
+                
+                -- Trứng hiếm
+                if name:find("rare") or name:find("hiếm") or name:find("hiem") then
+                    value = value + 500
+                end
+                
+                -- Trứng đặc biệt
+                if name:find("special") or name:find("đặc biệt") or name:find("dac biet") then
+                    value = value + 800
+                end
+                
+                -- Trứng màu sắc đặc biệt
+                if obj.BrickColor == BrickColor.new("Bright yellow") or 
+                   obj.BrickColor == BrickColor.new("Bright red") or
+                   obj.BrickColor == BrickColor.new("Bright blue") then
+                    value = value + 300
+                end
+                
+                if value > bestValue then
+                    bestValue = value
+                    bestEgg = obj
+                end
+            end
+        end
+    end
+    
+    return bestEgg
+end
+
+-- Hàm tween nhanh đến trứng
+local function tweenToEgg(egg)
+    local character = player.Character
+    if not character then return end
+    
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    -- Tween siêu nhanh
+    local tweenInfo = TweenInfo.new(
+        0.3, -- Thời gian siêu ngắn
+        Enum.EasingStyle.Linear, -- Chạy thẳng
+        Enum.EasingDirection.Out
+    )
+    
+    local targetCFrame = egg.CFrame * CFrame.new(0, 0, 3)
+    local tween = TweenService:Create(root, tweenInfo, {CFrame = targetCFrame})
+    
+    -- Hủy tween cũ nếu có
+    if currentTween then
+        currentTween:Cancel()
+    end
+    
+    currentTween = tween
+    tween:Play()
+    
+    -- Chờ tween hoàn thành
+    tween.Completed:Wait()
+    
+    -- Kéo trứng vào người
+    pcall(function()
+        egg.CFrame = root.CFrame * CFrame.new(0, 0, -2)
+        egg.Anchored = false
+        egg.Velocity = Vector3.new(0, 0, 0)
+        
+        -- Kích hoạt sự kiện chạm
+        egg.Touched:Fire(root)
+    end)
+end
+
+-- Hàm auto farm chính
+local function autoFarmEggs()
+    spawn(function()
+        while autoFarm do
+            local character = player.Character
+            if character then
+                local root = character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    -- Tìm trứng xịn nhất
+                    local bestEgg = findBestEgg()
+                    
+                    if bestEgg then
+                        print("[BTMod] Đang farm trứng: " .. bestEgg.Name)
+                        
+                        -- Tween đến trứng
+                        tweenToEgg(bestEgg)
+                        
+                        -- Đợi một chút
+                        wait(0.2)
+                        
+                        -- Tìm trứng khác
+                        bestEgg = findBestEgg()
+                        if bestEgg then
+                            tweenToEgg(bestEgg)
+                        end
+                    else
+                        print("[BTMod] Không tìm thấy trứng!")
+                        wait(1)
+                    end
+                end
+            end
+            wait(0.1)
+        end
+    end)
+end
+
+-- Nút Auto Farm
+autoFarmButton.MouseButton1Click:Connect(function()
+    autoFarm = not autoFarm
+    if autoFarm then
+        autoFarmButton.Text = "🤖 AUTO FARM: BẬT"
+        autoFarmButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        autoFarmButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+        print("[BTMod] Auto Farm đã BẬT!")
+        autoFarmEggs()
+    else
+        autoFarmButton.Text = "🤖 AUTO FARM: TẮT"
+        autoFarmButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+        autoFarmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        print("[BTMod] Auto Farm đã TẮT!")
+        if currentTween then
+            currentTween:Cancel()
+        end
+    end
+end)
 
 -- Nút TP quái vật
 tpButton.MouseButton1Click:Connect(function()
@@ -141,36 +298,25 @@ end)
 -- Nút kéo trứng
 eggButton.MouseButton1Click:Connect(function()
     local character = player.Character
-    if not character then
-        print("[BTMod] Bạn chưa có nhân vật!")
-        return
-    end
+    if not character then return end
     
     local root = character:FindFirstChild("HumanoidRootPart")
-    if not root then
-        print("[BTMod] Không tìm thấy nhân vật!")
-        return
-    end
+    if not root then return end
     
-    local eggCount = 0
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            local name = obj.Name:lower()
-            if name:find("egg") or name:find("trung") or name:find("trứng") or name:find("golden") then
-                pcall(function()
-                    obj.CFrame = root.CFrame * CFrame.new(0, 0, -3)
-                    obj.Anchored = false
-                    obj.Velocity = Vector3.new(0, 0, 0)
-                    eggCount = eggCount + 1
-                end)
-            end
-        end
+    local bestEgg = findBestEgg()
+    if bestEgg then
+        pcall(function()
+            bestEgg.CFrame = root.CFrame * CFrame.new(0, 0, -3)
+            bestEgg.Anchored = false
+            bestEgg.Velocity = Vector3.new(0, 0, 0)
+        end)
+        eggButton.Text = "✅ Đã kéo trứng xịn!"
+        print("[BTMod] Đã kéo trứng xịn nhất: " .. bestEgg.Name)
+    else
+        eggButton.Text = "❌ Không có trứng!"
     end
-    
-    eggButton.Text = "✅ Đã kéo " .. eggCount .. " trứng!"
     wait(2)
     eggButton.Text = "🥚 Kéo Trứng Đến"
-    print("[BTMod] Đã kéo " .. eggCount .. " quả trứng đến gần!")
 end)
 
 -- Tự động lưu vị trí mỗi 15 giây
@@ -181,4 +327,4 @@ spawn(function()
     end
 end)
 
-print("[BTMod] Script đã chạy thành công!")
+print("[BTMod] Script đã chạy thành công! Auto Farm siêu tốc!")
