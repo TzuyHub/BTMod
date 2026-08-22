@@ -1,66 +1,47 @@
--- Tạo GUI
+-- Tạo nút bấm
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FPSBooster"
+ScreenGui.Name = "FPSDestroyer"
 ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
 local Button = Instance.new("TextButton")
 Button.Size = UDim2.new(0, 150, 0, 50)
 Button.Position = UDim2.new(0.5, -75, 0.1, 0)
-Button.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
-Button.TextColor3 = Color3.fromRGB(0, 0, 0)
+Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Màu đỏ
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.GothamBold
 Button.TextSize = 20
-Button.Text = "TĂNG FPS"
+Button.Text = "XÓA PET (TĂNG FPS)"
 Button.Parent = ScreenGui
 
-local isHidden = false -- Biến kiểm tra trạng thái
-
 Button.MouseButton1Click:Connect(function()
-    isHidden = not isHidden -- Đảo trạng thái Bật/Tắt
-    
-    if isHidden then
-        Button.Text = "HIỆN PET LẠI"
-        Button.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    -- Lặp qua tất cả các Model trong Workspace
+    for _, v in pairs(workspace:GetDescendants()) do
         
-        -- Lặp qua tất cả các vật thể trong game
-        for _, v in pairs(workspace:GetDescendants()) do
-            -- Tìm các con Pet (thường là Model có Humanoid hoặc tên chứa 'Pet')
-            if v:IsA("Model") and v:FindFirstChild("Humanoid") then
-                v:SetAttribute("HiddenByScript", true) -- Đánh dấu để nhớ
-                v.PrimaryPart.Transparency = 1
-                for _, part in pairs(v:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Transparency = 1 -- Làm trong suốt
-                        part.CanCollide = false -- Không va chạm
-                        part.CanQuery = false -- Không bị raycast
-                    end
-                    if part:IsA("Decal") then
-                        part.Transparency = 1
-                    end
+        -- Điều kiện nhận diện Pet (Model có Humanoid, hoặc có tên chứa 'Pet', hoặc do người chơi sở hữu)
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+            
+            -- Kiểm tra xem có phải là nhân vật người chơi không (để không xóa nhầm)
+            local isCharacter = false
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player.Character == v then
+                    isCharacter = true
+                    break
                 end
             end
-        end
-    else
-        Button.Text = "TĂNG FPS"
-        Button.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
-        
-        -- Khôi phục lại
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("Model") and v:FindFirstChild("Humanoid") then
-                if v:GetAttribute("HiddenByScript") then
-                    for _, part in pairs(v:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.Transparency = 0
-                            part.CanCollide = true
-                            part.CanQuery = true
-                        end
-                        if part:IsA("Decal") then
-                            part.Transparency = 0
-                        end
-                    end
-                end
+            
+            -- Nếu không phải nhân vật người chơi thì tiến hành xóa
+            if not isCharacter then
+                -- Phá hủy toàn bộ model (Xóa vĩnh viễn khỏi bộ nhớ game)
+                v:Destroy() 
             end
         end
     end
+    
+    -- Thông báo nhỏ
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Thành công!",
+        Text = "Đã xóa toàn bộ pet không tồn tại trong game!",
+        Duration = 3
+    })
 end)
