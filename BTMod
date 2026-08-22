@@ -1,25 +1,26 @@
 -- Script: BTMod
 -- Game: Lấy trộm một quả trứng (Steal an Egg)
--- Chức năng: Làm chậm quái vật, vô hiệu hóa tấn công và đổ lỗi cho người khác
+-- Chức năng: Dịch chuyển trứng, teleport, làm chậm quái vật
 
 -- Khởi tạo
 local BTMod = {}
 BTMod.Name = "BTMod"
-BTMod.Version = "2.0.0"
+BTMod.Version = "3.0.0"
 BTMod.Enabled = true
-BTMod.AutoEnabled = true
 
 -- Services
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 -- Biến lưu trữ
 local player = Players.LocalPlayer
 local originalSpeed = {}
 local isRunning = true
-local blameEnabled = true -- Tính năng đổ lỗi
+local autoSteal = false
+local eggs = {}
 
 -- Hàm tìm quái vật
 local function findMonsters()
@@ -56,6 +57,31 @@ local function findMonsters()
     return monsters
 end
 
+-- Hàm tìm trứng
+local function findEggs()
+    local foundEggs = {}
+    
+    local function searchIn(parent)
+        for _, obj in pairs(parent:GetDescendants()) do
+            local name = obj.Name:lower()
+            if name:find("egg") or name:find("trứng") or name:find("golden") then
+                if obj:IsA("Part") or obj:IsA("MeshPart") or obj:IsA("Model") then
+                    -- Kiểm tra xem có phải là trứng không
+                    if obj:IsA("Part") or obj:IsA("MeshPart") then
+                        if obj.Size.Magnitude < 20 then -- Trứng thường nhỏ
+                            table.insert(foundEggs, obj)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    searchIn(Workspace)
+    
+    return foundEggs
+end
+
 -- Hàm làm chậm quái vật
 local function slowMonsters(speedMultiplier)
     if not isRunning then return 0 end
@@ -69,15 +95,13 @@ local function slowMonsters(speedMultiplier)
                 originalSpeed[monster] = humanoid.WalkSpeed
             end
             
-            local newSpeed = math.max(originalSpeed[monster] * 0.1, 0.5)
+            local newSpeed = math.max(originalSpeed[monster] * 0.05, 0.1)
             if speedMultiplier then
-                newSpeed = math.max(originalSpeed[monster] * speedMultiplier, 0.3)
+                newSpeed = math.max(originalSpeed[monster] * speedMultiplier, 0.1)
             end
             
-            if humanoid.WalkSpeed > newSpeed then
-                humanoid.WalkSpeed = newSpeed
-                slowedCount = slowedCount + 1
-            end
+            humanoid.WalkSpeed = newSpeed
+            slowedCount = slowedCount + 1
         end
     end
     
@@ -93,23 +117,19 @@ local function disableAttacks()
     
     for monster, humanoid in pairs(monsters) do
         if monster and monster.Parent then
+            -- Làm quái vật không thể tấn công bằng cách đóng băng
+            if humanoid then
+                pcall(function()
+                    humanoid.WalkSpeed = 0.1
+                    humanoid.JumpPower = 0
+                end)
+            end
+            
+            -- Xóa các tool
             for _, descendant in pairs(monster:GetDescendants()) do
-                if descendant:IsA("Script") or descendant:IsA("LocalScript") then
-                    local scriptName = descendant.Name:lower()
-                    if scriptName:find("attack") or scriptName:find("tấn công") or
-                       scriptName:find("damage") or scriptName:find("sát thương") or
-                       scriptName:find("hit") or scriptName:find("đánh") or
-                       scriptName:find("kill") or scriptName:find("giết") then
-                        pcall(function()
-                            descendant.Disabled = true
-                            disabledCount = disabledCount + 1
-                        end)
-                    end
-                end
-                
-                if descendant:IsA("Tool") and descendant:FindFirstChild("Handle") then
+                if descendant:IsA("Tool") then
                     pcall(function()
-                        descendant.Enabled = false
+                        descendant:Destroy()
                         disabledCount = disabledCount + 1
                     end)
                 end
@@ -120,209 +140,93 @@ local function disableAttacks()
     return disabledCount
 end
 
--- Hàm tìm người chơi khác ở xa để đổ lỗi
-local function findFarPlayer()
-    local farthestPlayer = nil
-    local farthestDistance = 0
+-- Hàm teleport trứng đến người chơi
+local function teleportEggToPlayer()
+    local character = player.Character
+    if not character then return false end
     
-    for _, otherPlayer in pairs(Players:GetPlayers()) do
-        if otherPlayer ~= player then
-            local otherCharacter = otherPlayer.Character
-            local myCharacter = player.Character
-            
-            if otherCharacter and myCharacter then
-                local otherRoot = otherCharacter:FindFirstChild("HumanoidRootPart")
-                local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
-                
-                if otherRoot and myRoot then
-                    local distance = (otherRoot.Position - myRoot.Position).Magnitude
-                    if distance > farthestDistance then
-                        farthestDistance = distance
-                        farthestPlayer = otherPlayer
-                    end
-                end
-            end
-        end
-    end
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
     
-    return farthestPlayer
-end
-
--- Hàm chặn và thay đổi thông tin trộm trứng
-local function setupBlameSystem()
-    -- Chặn các RemoteEvent liên quan đến trộm trứng
-    local function interceptRemotes()
-        -- Tìm tất cả RemoteEvent trong game
-        local remotes = {}
-        
-        local function findRemotes(parent)
-            for _, obj in pairs(parent:GetDescendants()) do
-                if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                    local name = obj.Name:lower()
-                    if name:find("steal") or name:find("trộm") or
-                       name:find("egg") or name:find("trứng") or
-                       name:find("theft") or name:find("rob") or
-                       name:find("take") or name:find("lấy") or
-                       name:find("grab") or name:find("catch") then
-                        table.insert(remotes, obj)
-                    end
-                end
-            end
-        end
-        
-        findRemotes(ReplicatedStorage)
-        findRemotes(Workspace)
-        
-        -- Chặn các remote
-        for _, remote in pairs(remotes) do
-            if not remote:GetAttribute("BTMod_Hooked") then
-                remote:SetAttribute("BTMod_Hooked", true)
-                
-                -- Lưu hàm gốc
-                local originalFireServer = remote.FireServer
-                
-                -- Thay đổi hàm FireServer
-                remote.FireServer = function(self, ...)
-                    if blameEnabled and isRunning then
-                        local args = {...}
-                        local farPlayer = findFarPlayer()
-                        
-                        if farPlayer then
-                            -- Thay đổi thông tin người chơi
-                            for i, arg in pairs(args) do
-                                if typeof(arg) == "Instance" and arg:IsA("Player") then
-                                    args[i] = farPlayer
-                                elseif typeof(arg) == "string" and arg == player.Name then
-                                    args[i] = farPlayer.Name
-                                elseif typeof(arg) == "number" and arg == player.UserId then
-                                    args[i] = farPlayer.UserId
-                                end
-                            end
-                            
-                            -- Gửi với thông tin đã thay đổi
-                            return originalFireServer(self, unpack(args))
-                        end
-                    end
-                    
-                    -- Gửi bình thường nếu không có người chơi khác
-                    return originalFireServer(self, ...)
-                end
-            end
-        end
-    end
+    eggs = findEggs()
+    local teleportedCount = 0
     
-    -- Chặn các sự kiện trộm trứng
-    local function interceptEggEvents()
-        -- Tìm tất cả trứng trong game
-        local eggs = {}
-        
-        local function findEggs(parent)
-            for _, obj in pairs(parent:GetDescendants()) do
-                local name = obj.Name:lower()
-                if name:find("egg") or name:find("trứng") then
-                    if obj:IsA("Part") or obj:IsA("MeshPart") or obj:IsA("Model") then
-                        table.insert(eggs, obj)
-                    end
-                end
-            end
-        end
-        
-        findEggs(Workspace)
-        
-        -- Theo dõi sự kiện chạm vào trứng
-        for _, egg in pairs(eggs) do
-            if egg:IsA("Part") or egg:IsA("MeshPart") then
-                egg.Touched:Connect(function(hit)
-                    if blameEnabled and isRunning then
-                        local character = hit.Parent
-                        if character and character:FindFirstChild("Humanoid") then
-                            local touchingPlayer = Players:GetPlayerFromCharacter(character)
-                            if touchingPlayer == player then
-                                -- Đổ lỗi cho người chơi khác
-                                local farPlayer = findFarPlayer()
-                                if farPlayer then
-                                    print("[BTMod] Đã đổ lỗi trộm trứng cho: " .. farPlayer.Name)
-                                    
-                                    -- Tạo fake touch từ người chơi khác
-                                    local fakeTouch = Instance.new("Part")
-                                    fakeTouch.Name = "FakeTouch"
-                                    fakeTouch.Size = Vector3.new(1, 1, 1)
-                                    fakeTouch.CanCollide = false
-                                    fakeTouch.Transparency = 1
-                                    fakeTouch.Position = egg.Position
-                                    fakeTouch.Parent = farPlayer.Character
-                                    
-                                    -- Xóa fake touch sau khi dùng
-                                    wait(0.1)
-                                    fakeTouch:Destroy()
-                                end
-                            end
-                        end
-                    end
-                end)
-            end
-        end
-    end
-    
-    -- Chặn các function liên quan
-    local function hookFunctions()
-        -- Hook vào các function kiểm tra trộm
-        if game:GetService("Players").LocalPlayer then
-            local oldNamecall
-            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-                local method = getnamecallmethod()
-                local args = {...}
-                
-                if blameEnabled and isRunning then
-                    if method == "FireServer" or method == "InvokeServer" then
-                        local farPlayer = findFarPlayer()
-                        if farPlayer then
-                            -- Thay đổi args
-                            for i, arg in pairs(args) do
-                                if typeof(arg) == "Instance" and arg:IsA("Player") then
-                                    args[i] = farPlayer
-                                elseif typeof(arg) == "string" and arg == player.Name then
-                                    args[i] = farPlayer.Name
-                                end
-                            end
-                            
-                            return oldNamecall(self, unpack(args))
-                        end
-                    end
+    for _, egg in pairs(eggs) do
+        if egg and egg.Parent then
+            pcall(function()
+                -- Lưu vị trí gốc
+                if not egg:GetAttribute("BTMod_OriginalPos") then
+                    egg:SetAttribute("BTMod_OriginalPos", egg.Position)
                 end
                 
-                return oldNamecall(self, ...)
+                -- Teleport trứng đến gần người chơi
+                local newPos = root.Position + Vector3.new(0, 5, 0)
+                egg.CFrame = CFrame.new(newPos)
+                egg.Anchored = false
+                teleportedCount = teleportedCount + 1
             end)
         end
     end
     
-    -- Chạy các hàm chặn
-    interceptRemotes()
-    interceptEggEvents()
-    hookFunctions()
-    
-    -- Liên tục cập nhật
-    spawn(function()
-        while wait(5) do
-            if isRunning and blameEnabled then
-                interceptRemotes()
-                interceptEggEvents()
-            end
-        end
-    end)
+    return teleportedCount
 end
 
--- Hàm khôi phục tốc độ
-local function restoreSpeed()
-    for monster, speed in pairs(originalSpeed) do
-        if monster and monster.Parent then
-            local humanoid = monster:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.WalkSpeed = speed
-            end
+-- Hàm dịch chuyển trứng mượt mà
+local function smoothTeleportEgg()
+    local character = player.Character
+    if not character then return end
+    
+    local root = character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    eggs = findEggs()
+    
+    for _, egg in pairs(eggs) do
+        if egg and egg.Parent then
+            pcall(function()
+                local targetPos = root.Position + Vector3.new(0, 3, 0)
+                local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear)
+                local tween = TweenService:Create(egg, tweenInfo, {Position = targetPos})
+                tween:Play()
+            end)
         end
     end
-    originalSpeed = {}
+end
+
+-- Hàm tự động lấy trứng
+local function autoStealEggs()
+    spawn(function()
+        while autoSteal and isRunning do
+            local character = player.Character
+            if character then
+                local root = character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    eggs = findEggs()
+                    for _, egg in pairs(eggs) do
+                        if egg and egg.Parent then
+                            pcall(function()
+                                -- Teleport trứng vào người chơi
+                                egg.CFrame = root.CFrame * CFrame.new(0, 0, -3)
+                                egg.Anchored = false
+                                
+                                -- Kích hoạt sự kiện chạm
+                                egg.Touched:Fire(root)
+                                
+                                -- Thử lấy trứng
+                                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                                if humanoid then
+                                    local tool = Instance.new("Tool")
+                                    tool.Name = egg.Name
+                                    tool.Parent = character
+                                end
+                            end)
+                        end
+                    end
+                end
+            end
+            wait(0.5)
+        end
+    end)
 end
 
 -- Hàm tạo GUI
@@ -334,8 +238,8 @@ local function createGUI()
     -- Tạo frame chính
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 300, 0, 300)
-    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -150)
+    mainFrame.Size = UDim2.new(0, 300, 0, 350)
+    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
     mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 0)
     mainFrame.BorderSizePixel = 2
@@ -356,7 +260,7 @@ local function createGUI()
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, -50, 0, 35)
     title.Position = UDim2.new(0, 10, 0, 5)
-    title.Text = "🥚 BTMod - Trộm Trứng"
+    title.Text = "🥚 BTMod - Trộm Trứng Pro"
     title.TextColor3 = Color3.fromRGB(255, 255, 0)
     title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     title.Font = Enum.Font.SourceSansBold
@@ -374,49 +278,60 @@ local function createGUI()
     toggleButton.TextSize = 14
     toggleButton.Parent = mainFrame
     
-    -- Nút bật/tắt tính năng đổ lỗi
-    local blameButton = Instance.new("TextButton")
-    blameButton.Size = UDim2.new(1, -20, 0, 40)
-    blameButton.Position = UDim2.new(0, 10, 0, 100)
-    blameButton.Text = "🎭 Đổ Lỗi: BẬT"
-    blameButton.BackgroundColor3 = Color3.fromRGB(150, 0, 255)
-    blameButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    blameButton.Font = Enum.Font.SourceSansBold
-    blameButton.TextSize = 14
-    blameButton.Parent = mainFrame
+    -- Nút teleport trứng
+    local teleportEggButton = Instance.new("TextButton")
+    teleportEggButton.Size = UDim2.new(1, -20, 0, 40)
+    teleportEggButton.Position = UDim2.new(0, 10, 0, 100)
+    teleportEggButton.Text = "🥚 Kéo Trứng Đến Gần"
+    teleportEggButton.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+    teleportEggButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+    teleportEggButton.Font = Enum.Font.SourceSansBold
+    teleportEggButton.TextSize = 14
+    teleportEggButton.Parent = mainFrame
+    
+    -- Nút tự động lấy trứng
+    local autoStealButton = Instance.new("TextButton")
+    autoStealButton.Size = UDim2.new(1, -20, 0, 40)
+    autoStealButton.Position = UDim2.new(0, 10, 0, 150)
+    autoStealButton.Text = "🤖 Tự Động Lấy Trứng: TẮT"
+    autoStealButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+    autoStealButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    autoStealButton.Font = Enum.Font.SourceSansBold
+    autoStealButton.TextSize = 14
+    autoStealButton.Parent = mainFrame
     
     -- Nút làm chậm quái vật
     local slowButton = Instance.new("TextButton")
     slowButton.Size = UDim2.new(1, -20, 0, 40)
-    slowButton.Position = UDim2.new(0, 10, 0, 150)
-    slowButton.Text = "🐌 Làm Chậm Quái Vật (10%)"
+    slowButton.Position = UDim2.new(0, 10, 0, 200)
+    slowButton.Text = "🐌 Làm Chậm Quái Vật"
     slowButton.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
     slowButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     slowButton.Font = Enum.Font.SourceSansBold
     slowButton.TextSize = 14
     slowButton.Parent = mainFrame
     
-    -- Nút làm chậm nhẹ
-    local lightSlowButton = Instance.new("TextButton")
-    lightSlowButton.Size = UDim2.new(1, -20, 0, 40)
-    lightSlowButton.Position = UDim2.new(0, 10, 0, 200)
-    lightSlowButton.Text = "🐢 Làm Chậm Nhẹ (50%)"
-    lightSlowButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    lightSlowButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    lightSlowButton.Font = Enum.Font.SourceSansBold
-    lightSlowButton.TextSize = 14
-    lightSlowButton.Parent = mainFrame
-    
     -- Nút vô hiệu hóa tấn công
     local disableButton = Instance.new("TextButton")
     disableButton.Size = UDim2.new(1, -20, 0, 40)
     disableButton.Position = UDim2.new(0, 10, 0, 250)
-    disableButton.Text = "🛡️ Không Bị Tấn Công"
+    disableButton.Text = "🛡️ Vô Hiệu Hóa Tấn Công"
     disableButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
     disableButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     disableButton.Font = Enum.Font.SourceSansBold
     disableButton.TextSize = 14
     disableButton.Parent = mainFrame
+    
+    -- Nút thực hiện tất cả
+    local allButton = Instance.new("TextButton")
+    allButton.Size = UDim2.new(1, -20, 0, 40)
+    allButton.Position = UDim2.new(0, 10, 0, 300)
+    allButton.Text = "⚡ Thực Hiện Tất Cả"
+    allButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    allButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+    allButton.Font = Enum.Font.SourceSansBold
+    allButton.TextSize = 14
+    allButton.Parent = mainFrame
     
     -- Nút mở lại GUI khi đóng
     local openButton = Instance.new("TextButton")
@@ -438,27 +353,66 @@ local function createGUI()
             toggleButton.Text = "✅ ĐANG BẬT - Click để TẮT"
             toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
             print("[BTMod] Script đã được BẬT!")
-            slowMonsters(0.1)
-            disableAttacks()
         else
             toggleButton.Text = "❌ ĐÃ TẮT - Click để MỞ"
             toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
             print("[BTMod] Script đã được TẮT!")
-            restoreSpeed()
+            autoSteal = false
+            autoStealButton.Text = "🤖 Tự Động Lấy Trứng: TẮT"
+            autoStealButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
         end
     end)
     
-    -- Chức năng bật/tắt đổ lỗi
-    blameButton.MouseButton1Click:Connect(function()
-        blameEnabled = not blameEnabled
-        if blameEnabled then
-            blameButton.Text = "🎭 Đổ Lỗi: BẬT"
-            blameButton.BackgroundColor3 = Color3.fromRGB(150, 0, 255)
-            print("[BTMod] Tính năng đổ lỗi đã BẬT!")
+    -- Chức năng teleport trứng
+    teleportEggButton.MouseButton1Click:Connect(function()
+        if isRunning then
+            local count = teleportEggToPlayer()
+            print("[BTMod] Đã kéo " .. count .. " quả trứng đến gần!")
         else
-            blameButton.Text = "🎭 Đổ Lỗi: TẮT"
-            blameButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-            print("[BTMod] Tính năng đổ lỗi đã TẮT!")
+            print("[BTMod] Script đang TẮT!")
+        end
+    end)
+    
+    -- Chức năng tự động lấy trứng
+    autoStealButton.MouseButton1Click:Connect(function()
+        if isRunning then
+            autoSteal = not autoSteal
+            if autoSteal then
+                autoStealButton.Text = "🤖 Tự Động Lấy Trứng: BẬT"
+                autoStealButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                print("[BTMod] Tự động lấy trứng đã BẬT!")
+                autoStealEggs()
+            else
+                autoStealButton.Text = "🤖 Tự Động Lấy Trứng: TẮT"
+                autoStealButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+                print("[BTMod] Tự động lấy trứng đã TẮT!")
+            end
+        end
+    end)
+    
+    -- Chức năng làm chậm
+    slowButton.MouseButton1Click:Connect(function()
+        if isRunning then
+            local count = slowMonsters(0.05)
+            print("[BTMod] Đã làm chậm " .. count .. " quái vật!")
+        end
+    end)
+    
+    -- Chức năng vô hiệu hóa
+    disableButton.MouseButton1Click:Connect(function()
+        if isRunning then
+            local count = disableAttacks()
+            print("[BTMod] Đã vô hiệu hóa " .. count .. " quái vật!")
+        end
+    end)
+    
+    -- Thực hiện tất cả
+    allButton.MouseButton1Click:Connect(function()
+        if isRunning then
+            local eggsCount = teleportEggToPlayer()
+            local slowed = slowMonsters(0.05)
+            local disabled = disableAttacks()
+            print("[BTMod] Kết quả: Trứng " .. eggsCount .. " | Làm chậm " .. slowed .. " | Vô hiệu " .. disabled)
         end
     end)
     
@@ -471,34 +425,6 @@ local function createGUI()
     openButton.MouseButton1Click:Connect(function()
         mainFrame.Visible = true
         openButton.Visible = false
-    end)
-    
-    -- Kết nối các nút chức năng
-    slowButton.MouseButton1Click:Connect(function()
-        if isRunning then
-            local count = slowMonsters(0.1)
-            print("[BTMod] Đã làm chậm " .. count .. " quái vật xuống 10% tốc độ!")
-        else
-            print("[BTMod] Script đang TẮT, hãy BẬT trước!")
-        end
-    end)
-    
-    lightSlowButton.MouseButton1Click:Connect(function()
-        if isRunning then
-            local count = slowMonsters(0.5)
-            print("[BTMod] Đã làm chậm " .. count .. " quái vật xuống 50% tốc độ!")
-        else
-            print("[BTMod] Script đang TẮT, hãy BẬT trước!")
-        end
-    end)
-    
-    disableButton.MouseButton1Click:Connect(function()
-        if isRunning then
-            local count = disableAttacks()
-            print("[BTMod] Đã vô hiệu hóa tấn công của " .. count .. " quái vật!")
-        else
-            print("[BTMod] Script đang TẮT, hãy BẬT trước!")
-        end
     end)
 end
 
@@ -513,7 +439,7 @@ local function watchForNewMonsters()
                name:find("beast") or name:find("thú") then
                 wait(0.5)
                 if isRunning then
-                    slowMonsters(0.1)
+                    slowMonsters(0.05)
                     disableAttacks()
                 end
             end
@@ -527,18 +453,18 @@ local function init()
     print("[BTMod] Script Đã Được Tải!")
     print("[BTMod] Phiên bản: " .. BTMod.Version)
     print("[BTMod] Game: Lấy trộm một quả trứng")
-    print("[BTMod] Tính năng mới: Đổ lỗi cho người chơi khác!")
+    print("[BTMod] Cách dùng: Click '🥚 Kéo Trứng Đến Gần' để lấy trứng!")
     print("=" .. string.rep("=", 60) .. "=")
     
     createGUI()
     watchForNewMonsters()
-    setupBlameSystem() -- Thiết lập hệ thống đổ lỗi
     
     -- Tự động áp dụng khi vào game
     wait(2)
-    if BTMod.AutoEnabled then
-        slowMonsters(0.1)
+    if BTMod.Enabled then
+        slowMonsters(0.05)
         disableAttacks()
+        teleportEggToPlayer()
     end
 end
 
