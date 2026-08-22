@@ -1,85 +1,35 @@
--- Tên Script: BTMod (Phiên bản nâng cấp: Kéo thả nút)
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-
+-- Tên Script: BTMod
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BTMod" 
-ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
-ScreenGui.IgnoreGuiInset = true -- Cho phép nút kéo ra sát mép màn hình
 
--- Tạo nút bấm
 local Button = Instance.new("TextButton")
 Button.Name = "BTModButton"
 Button.Size = UDim2.new(0, 220, 0, 50)
-Button.Position = UDim2.new(0.5, -110, 0.1, 0) -- Vị trí mặc định
+Button.Position = UDim2.new(0.5, -110, 0.1, 0)
 Button.BackgroundColor3 = Color3.fromRGB(255, 69, 0) 
 Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.GothamBold
-Button.TextSize = 12
-Button.Text = "Xóa con đang cảnh chừng trứng"
+Button.TextSize = 13
+Button.Text = "Khóa cứng Pet (Không đánh được)"
 Button.Parent = ScreenGui
 
--- Thêm nút nhỏ để mở rộng/ẩn nút chính (tùy chọn, nhưng hữu ích để bấm cho dễ)
-local DragBar = Instance.new("Frame")
-DragBar.Size = UDim2.new(0, 220, 0, 20)
-DragBar.Position = UDim2.new(0, 0, 0, -20)
-DragBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-DragBar.BorderSizePixel = 0
-DragBar.Parent = Button
-DragBar.Text = "Di chuyển"
-
 local isActive = false
-local dragging = false
-local dragInput, dragStart, startPos
 
--- Các hàm xử lý kéo thả
-local function update(Input)
-    local delta = Input.Position - dragStart
-    Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-
-DragBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = Button.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-DragBar.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        update(input)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        update(input)
-    end
-end)
-
--- Chức năng chính: Khóa Pet
 Button.MouseButton1Click:Connect(function()
     isActive = not isActive
     
     if isActive then
         Button.Text = "Mở khóa Pet"
-        Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) 
+        Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Màu đỏ khi đang khóa
         
         for _, v in pairs(workspace:GetDescendants()) do
             if v:IsA("Model") and v:FindFirstChild("Humanoid") then
                 
                 -- Kiểm tra xem có phải là nhân vật người chơi không (tránh khóa nhầm chính mình)
                 local isCharacter = false
-                for _, player in pairs(Players:GetPlayers()) do
+                for _, player in pairs(game.Players:GetPlayers()) do
                     if player.Character == v then
                         isCharacter = true
                         break
@@ -95,38 +45,39 @@ Button.MouseButton1Click:Connect(function()
                         humanoid.WalkSpeed = 0
                         humanoid.JumpPower = 0
                         humanoid.PlatformStand = true
+                        humanoid:ChangeState(Enum.HumanoidStateType.Physics) -- Ép về trạng thái vật lý
                     end
                     
-                    -- 2. Phá vỡ khớp nối
+                    -- 2. Phá vỡ khớp nối (Break Joints) để chúng không thể xoay hoặc cử động chân
                     for _, joint in pairs(v:GetJoints()) do
                         joint:Destroy()
                     end
                     
-                    -- 3. Khóa cứng (Anchor) và tắt va chạm
+                    -- 3. Khóa cứng (Anchor) toàn bộ các bộ phận
                     for _, part in pairs(v:GetDescendants()) do
                         if part:IsA("BasePart") then
-                            part.Anchored = true
+                            part.Anchored = true -- Quan trọng nhất: Không cho vật lý đụng vào
                             part.CanCollide = false
                             part.CanTouch = false
-                            part.CanQuery = false
+                            part.CanQuery = false -- Đòn đánh xuyên qua
                         end
                     end
                     
-                    -- 4. Vô hiệu hóa Script của Server
+                    -- 4. Vô hiệu hóa Script của Server đang điều khiển nó
                     for _, script in pairs(v:GetDescendants()) do
                         if script:IsA("Script") or script:IsA("LocalScript") then
                             script.Disabled = true
                         end
                     end
                     
-                    -- 5. Đẩy nó ra xa người chơi (Dưới đất)
+                    -- 5. Đẩy nó ra xa người chơi (Dưới đất) để tuyệt đối không thể chạm vào bạn
                     v:PivotTo(CFrame.new(0, -1000, 0))
                 end
             end
         end
         
     else
-        Button.Text = "Xóa con đang cảnh chừng trứng"
+        Button.Text = "Khóa cứng Pet (Không đánh được)"
         Button.BackgroundColor3 = Color3.fromRGB(255, 69, 0)
         
         -- Khôi phục lại pet
@@ -156,7 +107,7 @@ Button.MouseButton1Click:Connect(function()
                     end
                     
                     -- Đưa về vị trí ban đầu (gần người chơi)
-                    v:PivotTo(CFrame.new(Players.LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)))
+                    v:PivotTo(CFrame.new(game.Players.LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)))
                 end
             end
         end
