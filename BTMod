@@ -1,35 +1,35 @@
--- Tên Script: BTMod (Chống đuổi & Chống tấn công tuyệt đối)
+-- Tên Script: BTMod (Chế độ "Quái vật siêu chậm")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
+-- GUI
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BTMod" 
+ScreenGui.Name = "BTMod"
 ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true 
 
--- Tạo nút bấm
+-- Nút chính
 local Button = Instance.new("TextButton")
 Button.Name = "BTModButton"
-Button.Size = UDim2.new(0, 220, 0, 50)
-Button.Position = UDim2.new(0.5, -110, 0.1, 0)
+Button.Size = UDim2.new(0, 200, 0, 50)
+Button.Position = UDim2.new(0.5, -100, 0.1, 0)
 Button.BackgroundColor3 = Color3.fromRGB(255, 69, 0) 
 Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 Button.Font = Enum.Font.GothamBold
 Button.TextSize = 12
-Button.Text = "Khóa Pet (Chống đuổi)"
+Button.Text = "Làm quái đi chậm lại"
 Button.Parent = ScreenGui
 
 -- Thanh kéo thả
 local DragBar = Instance.new("Frame")
-DragBar.Size = UDim2.new(0, 220, 0, 20)
+DragBar.Size = UDim2.new(0, 200, 0, 20)
 DragBar.Position = UDim2.new(0, 0, 0, -20)
 DragBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 DragBar.BorderSizePixel = 0
 DragBar.Parent = Button
 
-local isActive = false
+local isSlow = false
 local dragging = false
 local dragInput, dragStart, startPos
 
@@ -57,83 +57,63 @@ UserInputService.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then update(input) end
 end)
 
--- Hàm khóa Pet
-local function FreezePets()
+-- Hàm làm chậm quái
+local function SlowDownPets()
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") then
+            
+            -- Kiểm tra có phải người chơi không (tránh làm chậm chính mình)
             local isCharacter = false
             for _, player in pairs(Players:GetPlayers()) do
-                if player.Character == v then isCharacter = true break end
+                if player.Character == v then
+                    isCharacter = true
+                    break
+                end
             end
             
             if not isCharacter then
-                -- 1. Vô hiệu hóa AI (Không đuổi theo, không tấn công)
                 local humanoid = v:FindFirstChildOfClass("Humanoid")
                 if humanoid then
-                    humanoid.WalkSpeed = 0
-                    humanoid.JumpPower = 0
-                    humanoid.PlatformStand = true -- Đứng im như tượng
-                    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-                end
-                
-                -- 2. Phá vỡ khớp nối vật lý
-                for _, joint in pairs(v:GetJoints()) do joint:Destroy() end
-                
-                -- 3. Khóa cứng toàn bộ
-                for _, part in pairs(v:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Anchored = true 
-                        part.CanCollide = false 
-                        part.CanTouch = false 
-                        part.CanQuery = false -- Đòn đánh xuyên qua
+                    humanoid.WalkSpeed = 0.05 -- Gần như đứng im, chỉ chậm rì rì
+                    humanoid.JumpPower = 0    -- Không thể nhảy
+                    humanoid.AutoRotate = false -- Không thể xoay người đuổi theo
+                    
+                    -- Khóa cứng nhẹ vật lý để chúng không thể bị đẩy văng hay lao nhanh bằng lực
+                    for _, part in pairs(v:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanTouch = false -- Không chạm vào người chơi được nữa
+                        end
                     end
                 end
-                
-                -- 4. Tắt script server điều khiển
-                for _, script in pairs(v:GetDescendants()) do
-                    if script:IsA("Script") or script:IsA("LocalScript") then script.Disabled = true end
-                end
-
-                -- 5. Đẩy xuống đất sâu vĩnh viễn
-                v:PivotTo(CFrame.new(0, -99999, 0))
-
-                -- 6. Đánh dấu là đã khóa
-                v:SetAttribute("FrozenByBTMod", true)
             end
         end
     end
 end
 
--- Hàm mở khóa Pet
-local function UnfreezePets()
+-- Hàm khôi phục tốc độ
+local function RestorePets()
     for _, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") then
-            if v:GetAttribute("FrozenByBTMod") then
+            local isCharacter = false
+            for _, player in pairs(Players:GetPlayers()) do
+                if player.Character == v then
+                    isCharacter = true
+                    break
+                end
+            end
+            if not isCharacter then
                 local humanoid = v:FindFirstChildOfClass("Humanoid")
                 if humanoid then
                     humanoid.WalkSpeed = 16
                     humanoid.JumpPower = 50
-                    humanoid.PlatformStand = false
-                end
-                
-                for _, part in pairs(v:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Anchored = false
-                        part.CanCollide = true
-                        part.CanTouch = true
-                        part.CanQuery = true
+                    humanoid.AutoRotate = true
+                    
+                    for _, part in pairs(v:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanTouch = true
+                        end
                     end
                 end
-                
-                for _, script in pairs(v:GetDescendants()) do
-                    if script:IsA("Script") or script:IsA("LocalScript") then script.Disabled = false end
-                end
-                
-                -- Đưa về gần người chơi
-                if Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    v:PivotTo(CFrame.new(Players.LocalPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)))
-                end
-                v:SetAttribute("FrozenByBTMod", nil)
             end
         end
     end
@@ -141,24 +121,24 @@ end
 
 -- Sự kiện bấm nút
 Button.MouseButton1Click:Connect(function()
-    isActive = not isActive
+    isSlow = not isSlow
     
-    if isActive then
-        Button.Text = "Mở khóa Pet"
-        Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) 
-        FreezePets()
+    if isSlow then
+        Button.Text = "Khôi phục tốc độ quái"
+        Button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        SlowDownPets()
         
-        -- Tạo một vòng lặp âm thầm để đảm bảo Server không "hồi sinh" pet
+        -- Vòng lặp giữ chậm (chống Server ép tốc độ lại)
         task.spawn(function()
-            while isActive do
-                FreezePets() -- Chạy lại liên tục mỗi 0.5 giây
-                task.wait(0.5)
+            while isSlow do
+                SlowDownPets()
+                task.wait(1) -- Cứ mỗi 1 giây lại ép chậm lại 1 lần
             end
         end)
         
     else
-        Button.Text = "Khóa Pet (Chống đuổi)"
+        Button.Text = "Làm quái đi chậm lại"
         Button.BackgroundColor3 = Color3.fromRGB(255, 69, 0)
-        UnfreezePets()
+        RestorePets()
     end
 end)
