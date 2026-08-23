@@ -1,330 +1,507 @@
--- Script: BTMod
--- Game: Lấy trộm một quả trứng
--- Phiên bản: 7.0 - Auto Farm Trứng Siêu Tốc
-
+-- [[ TZUY HUB GUI - EGG FARM ]]
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HRP = Character:WaitForChild("HumanoidRootPart")
 local TweenService = game:GetService("TweenService")
-local player = Players.LocalPlayer
+local VirtualUser = game:GetService("VirtualUser")
+local UserInputService = game:GetService("UserInputService")
 
--- Tạo GUI
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "BTMod"
-screenGui.Parent = player:WaitForChild("PlayerGui")
+-- [[ TẠO GUI ]]
+local TzuyHub = Instance.new("ScreenGui")
+TzuyHub.Name = "TzuyHub"
+TzuyHub.Parent = Player:WaitForChild("PlayerGui")
+TzuyHub.ResetOnSpawn = false
 
--- Frame chính
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 250, 0, 250)
-frame.Position = UDim2.new(0.5, -125, 0.5, -125)
-frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-frame.BorderColor3 = Color3.fromRGB(255, 255, 0)
-frame.BorderSizePixel = 2
-frame.Parent = screenGui
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 450, 0, 550)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -275)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = TzuyHub
 
--- Tiêu đề
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -10, 0, 30)
-title.Position = UDim2.new(0, 5, 0, 5)
-title.Text = "🥚 BTMod - Auto Farm"
-title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-title.TextColor3 = Color3.fromRGB(255, 255, 0)
-title.Font = Enum.Font.SourceSansBold
-title.TextSize = 16
-title.Parent = frame
+-- Corner
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 15)
+UICorner.Parent = MainFrame
 
--- Nút Auto Farm
-local autoFarmButton = Instance.new("TextButton")
-autoFarmButton.Size = UDim2.new(1, -10, 0, 40)
-autoFarmButton.Position = UDim2.new(0, 5, 0, 40)
-autoFarmButton.Text = "🤖 AUTO FARM: TẮT"
-autoFarmButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
-autoFarmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoFarmButton.Font = Enum.Font.SourceSansBold
-autoFarmButton.TextSize = 14
-autoFarmButton.Parent = frame
+-- Gradient Effect
+local UIGradient = Instance.new("UIGradient")
+UIGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 150)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 50, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 0, 50))
+})
+UIGradient.Rotation = 45
+UIGradient.Parent = MainFrame
 
--- Nút TP quái vật
-local tpButton = Instance.new("TextButton")
-tpButton.Size = UDim2.new(1, -10, 0, 35)
-tpButton.Position = UDim2.new(0, 5, 0, 85)
-tpButton.Text = "🔄 TP Quái Về Chỗ Cũ"
-tpButton.BackgroundColor3 = Color3.fromRGB(255, 0, 150)
-tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-tpButton.Font = Enum.Font.SourceSansBold
-tpButton.TextSize = 14
-tpButton.Parent = frame
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 60)
+TitleBar.BackgroundColor3 = Color3.fromRGB(255, 50, 100)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
 
--- Nút kéo trứng
-local eggButton = Instance.new("TextButton")
-eggButton.Size = UDim2.new(1, -10, 0, 35)
-eggButton.Position = UDim2.new(0, 5, 0, 125)
-eggButton.Text = "🥚 Kéo Trứng Đến"
-eggButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-eggButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-eggButton.Font = Enum.Font.SourceSansBold
-eggButton.TextSize = 14
-eggButton.Parent = frame
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 15)
+TitleCorner.Parent = TitleBar
 
--- Nút đóng frame
-local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 30, 0, 25)
-closeButton.Position = UDim2.new(1, -35, 0, 5)
-closeButton.Text = "✕"
-closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.TextSize = 14
-closeButton.Parent = frame
+-- Title Text
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -70, 1, 0)
+Title.Position = UDim2.new(0, 25, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "TZUY HUB"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 32
+Title.Font = Enum.Font.GothamBlack
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.TextStrokeTransparency = 0.5
+Title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+Title.Parent = TitleBar
 
--- Nút mở lại
-local openButton = Instance.new("TextButton")
-openButton.Size = UDim2.new(0, 50, 0, 30)
-openButton.Position = UDim2.new(0, 10, 0, 10)
-openButton.Text = "🥚 MOD"
-openButton.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
-openButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-openButton.Font = Enum.Font.SourceSansBold
-openButton.TextSize = 12
-openButton.Visible = false
-openButton.Parent = screenGui
+-- Subtitle
+local Subtitle = Instance.new("TextLabel")
+Subtitle.Size = UDim2.new(1, -70, 0, 20)
+Subtitle.Position = UDim2.new(0, 25, 0, 35)
+Subtitle.BackgroundTransparency = 1
+Subtitle.Text = "Egg Farm Premium"
+Subtitle.TextColor3 = Color3.fromRGB(255, 200, 220)
+Subtitle.TextSize = 12
+Subtitle.Font = Enum.Font.Gotham
+Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+Subtitle.Parent = TitleBar
 
--- Đóng/mở frame
-closeButton.MouseButton1Click:Connect(function()
-    frame.Visible = false
-    openButton.Visible = true
-end)
+-- Close Button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 40, 0, 40)
+CloseButton.Position = UDim2.new(1, -50, 0, 10)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 0, 50)
+CloseButton.Text = "×"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 30
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = TitleBar
 
-openButton.MouseButton1Click:Connect(function()
-    frame.Visible = true
-    openButton.Visible = false
-end)
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 10)
+CloseCorner.Parent = CloseButton
 
--- Lưu vị trí ban đầu
-local savedPositions = {}
+-- Tab Container
+local TabContainer = Instance.new("Frame")
+TabContainer.Size = UDim2.new(1, 0, 0, 50)
+TabContainer.Position = UDim2.new(0, 0, 0, 60)
+TabContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+TabContainer.BorderSizePixel = 0
+TabContainer.Parent = MainFrame
 
--- Hàm lưu tất cả vị trí
-local function saveAllPositions()
-    local count = 0
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Parent and obj.Parent:IsA("Model") then
-            if obj.Name == "HumanoidRootPart" or obj.Name == "Torso" or obj.Name == "UpperTorso" then
-                savedPositions[obj.Parent] = obj.CFrame
-                count = count + 1
-            end
-        end
-    end
-    return count
+-- Tabs
+local Tabs = {}
+local function CreateTab(name, position)
+    local tab = Instance.new("TextButton")
+    tab.Size = UDim2.new(0, 150, 1, 0)
+    tab.Position = UDim2.new(0, position, 0, 0)
+    tab.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    tab.BorderSizePixel = 0
+    tab.Text = name
+    tab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tab.TextSize = 14
+    tab.Font = Enum.Font.GothamBold
+    tab.Parent = TabContainer
+    return tab
 end
 
--- Tự động lưu vị trí
-wait(1)
-saveAllPositions()
+local FarmTab = CreateTab("🥚 FARM", 0)
+local TeleportTab = CreateTab("📍 TELEPORT", 150)
+local SettingsTab = CreateTab("⚙️ SETTINGS", 300)
 
--- Biến điều khiển auto farm
-local autoFarm = false
-local currentTween = nil
+-- Content Container
+local ContentContainer = Instance.new("Frame")
+ContentContainer.Size = UDim2.new(1, -20, 1, -120)
+ContentContainer.Position = UDim2.new(0, 10, 0, 120)
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.Parent = MainFrame
 
--- Hàm tìm trứng xịn nhất
-local function findBestEgg()
-    local bestEgg = nil
-    local bestValue = 0
+-- [[ FARM TAB ]]
+local FarmPage = Instance.new("ScrollingFrame")
+FarmPage.Size = UDim2.new(1, 0, 1, 0)
+FarmPage.BackgroundTransparency = 1
+FarmPage.ScrollBarThickness = 5
+FarmPage.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 100)
+FarmPage.Parent = ContentContainer
+
+-- Create Section
+local function CreateSection(name, position)
+    local Section = Instance.new("Frame")
+    Section.Size = UDim2.new(1, -10, 0, 35)
+    Section.Position = UDim2.new(0, 5, 0, position)
+    Section.BackgroundColor3 = Color3.fromRGB(255, 50, 100)
+    Section.BorderSizePixel = 0
+    Section.Parent = FarmPage
     
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            local name = obj.Name:lower()
-            if name:find("egg") or name:find("trung") or name:find("trứng") or name:find("golden") then
-                -- Đánh giá độ xịn của trứng
-                local value = 0
-                
-                -- Trứng to hơn = xịn hơn
-                value = value + obj.Size.Magnitude
-                
-                -- Trứng vàng = xịn nhất
-                if name:find("golden") or name:find("vàng") or name:find("vang") then
-                    value = value + 1000
-                end
-                
-                -- Trứng hiếm
-                if name:find("rare") or name:find("hiếm") or name:find("hiem") then
-                    value = value + 500
-                end
-                
-                -- Trứng đặc biệt
-                if name:find("special") or name:find("đặc biệt") or name:find("dac biet") then
-                    value = value + 800
-                end
-                
-                -- Trứng màu sắc đặc biệt
-                if obj.BrickColor == BrickColor.new("Bright yellow") or 
-                   obj.BrickColor == BrickColor.new("Bright red") or
-                   obj.BrickColor == BrickColor.new("Bright blue") then
-                    value = value + 300
-                end
-                
-                if value > bestValue then
-                    bestValue = value
-                    bestEgg = obj
-                end
-            end
-        end
-    end
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = Section
     
-    return bestEgg
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, 0, 1, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = name
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.TextSize = 16
+    Label.Font = Enum.Font.GothamBold
+    Label.Parent = Section
+    
+    return Section
 end
 
--- Hàm tween nhanh đến trứng
-local function tweenToEgg(egg)
-    local character = player.Character
-    if not character then return end
+-- Toggle Button Function
+local function CreateToggle(name, position, callback)
+    local Toggle = Instance.new("TextButton")
+    Toggle.Size = UDim2.new(1, -10, 0, 45)
+    Toggle.Position = UDim2.new(0, 5, 0, position)
+    Toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    Toggle.BorderSizePixel = 0
+    Toggle.Text = "  " .. name .. ": OFF"
+    Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Toggle.TextSize = 14
+    Toggle.Font = Enum.Font.GothamBold
+    Toggle.TextXAlignment = Enum.TextXAlignment.Left
+    Toggle.Parent = FarmPage
     
-    local root = character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.Parent = Toggle
     
-    -- Tween siêu nhanh
-    local tweenInfo = TweenInfo.new(
-        0.3, -- Thời gian siêu ngắn
-        Enum.EasingStyle.Linear, -- Chạy thẳng
-        Enum.EasingDirection.Out
-    )
+    -- Indicator
+    local Indicator = Instance.new("Frame")
+    Indicator.Size = UDim2.new(0, 15, 0, 15)
+    Indicator.Position = UDim2.new(1, -25, 0.5, -7)
+    Indicator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    Indicator.BorderSizePixel = 0
+    Indicator.Parent = Toggle
     
-    local targetCFrame = egg.CFrame * CFrame.new(0, 0, 3)
-    local tween = TweenService:Create(root, tweenInfo, {CFrame = targetCFrame})
+    local IndicatorCorner = Instance.new("UICorner")
+    IndicatorCorner.CornerRadius = UDim.new(0, 7)
+    IndicatorCorner.Parent = Indicator
     
-    -- Hủy tween cũ nếu có
-    if currentTween then
-        currentTween:Cancel()
-    end
-    
-    currentTween = tween
-    tween:Play()
-    
-    -- Chờ tween hoàn thành
-    tween.Completed:Wait()
-    
-    -- Kéo trứng vào người
-    pcall(function()
-        egg.CFrame = root.CFrame * CFrame.new(0, 0, -2)
-        egg.Anchored = false
-        egg.Velocity = Vector3.new(0, 0, 0)
-        
-        -- Kích hoạt sự kiện chạm
-        egg.Touched:Fire(root)
+    local enabled = false
+    Toggle.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        Toggle.Text = "  " .. name .. ": " .. (enabled and "ON" or "OFF")
+        Toggle.BackgroundColor3 = enabled and Color3.fromRGB(255, 50, 100) or Color3.fromRGB(50, 50, 55)
+        Indicator.BackgroundColor3 = enabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100)
+        callback(enabled)
     end)
+    
+    return Toggle
 end
 
--- Hàm auto farm chính
-local function autoFarmEggs()
-    spawn(function()
-        while autoFarm do
-            local character = player.Character
-            if character then
-                local root = character:FindFirstChild("HumanoidRootPart")
-                if root then
-                    -- Tìm trứng xịn nhất
-                    local bestEgg = findBestEgg()
-                    
-                    if bestEgg then
-                        print("[BTMod] Đang farm trứng: " .. bestEgg.Name)
-                        
-                        -- Tween đến trứng
-                        tweenToEgg(bestEgg)
-                        
-                        -- Đợi một chút
-                        wait(0.2)
-                        
-                        -- Tìm trứng khác
-                        bestEgg = findBestEgg()
-                        if bestEgg then
-                            tweenToEgg(bestEgg)
-                        end
-                    else
-                        print("[BTMod] Không tìm thấy trứng!")
-                        wait(1)
+CreateSection("Auto Farm", 10)
+local AutoFarm = CreateToggle("Auto Farm", 50, function(enabled)
+    getgenv().AutoFarm = enabled
+end)
+
+local AutoCollect = CreateToggle("Auto Collect", 105, function(enabled)
+    getgenv().AutoCollect = enabled
+end)
+
+CreateSection("Movement", 165)
+local SpeedHack = CreateToggle("Speed Hack", 205, function(enabled)
+    getgenv().SpeedHack = enabled
+    if enabled then
+        Humanoid.WalkSpeed = 200
+    else
+        Humanoid.WalkSpeed = 16
+    end
+end)
+
+local FlyMode = CreateToggle("Fly Mode", 260, function(enabled)
+    getgenv().FlyMode = enabled
+end)
+
+CreateSection("Protection", 320)
+local AutoTweenBase = CreateToggle("Auto Tween Base", 360, function(enabled)
+    getgenv().AutoTweenBase = enabled
+end)
+
+local AntiKick = CreateToggle("Anti Kick", 415, function(enabled)
+    getgenv().AntiKick = enabled
+end)
+
+-- [[ TELEPORT TAB ]]
+local TeleportPage = Instance.new("ScrollingFrame")
+TeleportPage.Size = UDim2.new(1, 0, 1, 0)
+TeleportPage.BackgroundTransparency = 1
+TeleportPage.ScrollBarThickness = 5
+TeleportPage.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 100)
+TeleportPage.Visible = false
+TeleportPage.Parent = ContentContainer
+
+-- Teleport Buttons
+local function CreateTeleportButton(name, position, target)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 50)
+    btn.Position = UDim2.new(0, 5, 0, position)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    btn.BorderSizePixel = 0
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = TeleportPage
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        if target == "base" then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.Name:lower():find("base") then
+                    HRP.CFrame = CFrame.new(obj.Position + Vector3.new(0, 5, 0))
+                    break
+                end
+            end
+        elseif target == "egg" then
+            local nearest = nil
+            local minDist = math.huge
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
+                    local dist = (HRP.Position - obj.Position).Magnitude
+                    if dist < minDist then
+                        minDist = dist
+                        nearest = obj
                     end
                 end
             end
-            wait(0.1)
+            if nearest then
+                HRP.CFrame = CFrame.new(nearest.Position + Vector3.new(0, 5, 0))
+            end
+        elseif target == "spawn" then
+            HRP.CFrame = CFrame.new(0, 50, 0)
         end
     end)
+    
+    return btn
 end
 
--- Nút Auto Farm
-autoFarmButton.MouseButton1Click:Connect(function()
-    autoFarm = not autoFarm
-    if autoFarm then
-        autoFarmButton.Text = "🤖 AUTO FARM: BẬT"
-        autoFarmButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        autoFarmButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-        print("[BTMod] Auto Farm đã BẬT!")
-        autoFarmEggs()
-    else
-        autoFarmButton.Text = "🤖 AUTO FARM: TẮT"
-        autoFarmButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
-        autoFarmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        print("[BTMod] Auto Farm đã TẮT!")
-        if currentTween then
-            currentTween:Cancel()
-        end
+CreateTeleportButton("🏠 Teleport to Base", 10, "base")
+CreateTeleportButton("🥚 Teleport to Egg", 70, "egg")
+CreateTeleportButton("📍 Teleport to Spawn", 130, "spawn")
+
+-- [[ SETTINGS TAB ]]
+local SettingsPage = Instance.new("ScrollingFrame")
+SettingsPage.Size = UDim2.new(1, 0, 1, 0)
+SettingsPage.BackgroundTransparency = 1
+SettingsPage.ScrollBarThickness = 5
+SettingsPage.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 100)
+SettingsPage.Visible = false
+SettingsPage.Parent = ContentContainer
+
+-- Speed Settings
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Size = UDim2.new(1, 0, 0, 30)
+SpeedLabel.Position = UDim2.new(0, 5, 0, 10)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "🏃 Walk Speed: 16"
+SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLabel.TextSize = 16
+SpeedLabel.Font = Enum.Font.GothamBold
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.Parent = SettingsPage
+
+-- Speed Buttons
+local function CreateSpeedButton(text, position, speed)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 80, 0, 40)
+    btn.Position = UDim2.new(0, 5 + position, 0, 50)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    btn.BorderSizePixel = 0
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = SettingsPage
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        Humanoid.WalkSpeed = speed
+        SpeedLabel.Text = "🏃 Walk Speed: " .. speed
+    end)
+    
+    return btn
+end
+
+CreateSpeedButton("16", 0, 16)
+CreateSpeedButton("50", 85, 50)
+CreateSpeedButton("100", 170, 100)
+CreateSpeedButton("200", 255, 200)
+
+-- Jump Power Settings
+local JumpLabel = Instance.new("TextLabel")
+JumpLabel.Size = UDim2.new(1, 0, 0, 30)
+JumpLabel.Position = UDim2.new(0, 5, 0, 110)
+JumpLabel.BackgroundTransparency = 1
+JumpLabel.Text = "🦘 Jump Power: 50"
+JumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpLabel.TextSize = 16
+JumpLabel.Font = Enum.Font.GothamBold
+JumpLabel.TextXAlignment = Enum.TextXAlignment.Left
+JumpLabel.Parent = SettingsPage
+
+-- Jump Buttons
+local function CreateJumpButton(text, position, power)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 80, 0, 40)
+    btn.Position = UDim2.new(0, 5 + position, 0, 150)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+    btn.BorderSizePixel = 0
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.GothamBold
+    btn.Parent = SettingsPage
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = btn
+    
+    btn.MouseButton1Click:Connect(function()
+        Humanoid.JumpPower = power
+        JumpLabel.Text = "🦘 Jump Power: " .. power
+    end)
+    
+    return btn
+end
+
+CreateJumpButton("50", 0, 50)
+CreateJumpButton("100", 85, 100)
+CreateJumpButton("150", 170, 150)
+CreateJumpButton("200", 255, 200)
+
+-- Tab Switching
+local function SwitchTab(tab)
+    FarmPage.Visible = (tab == FarmTab)
+    TeleportPage.Visible = (tab == TeleportTab)
+    SettingsPage.Visible = (tab == SettingsTab)
+    
+    FarmTab.BackgroundColor3 = (tab == FarmTab) and Color3.fromRGB(255, 50, 100) or Color3.fromRGB(40, 40, 45)
+    TeleportTab.BackgroundColor3 = (tab == TeleportTab) and Color3.fromRGB(255, 50, 100) or Color3.fromRGB(40, 40, 45)
+    SettingsTab.BackgroundColor3 = (tab == SettingsTab) and Color3.fromRGB(255, 50, 100) or Color3.fromRGB(40, 40, 45)
+end
+
+FarmTab.MouseButton1Click:Connect(function() SwitchTab(FarmTab) end)
+TeleportTab.MouseButton1Click:Connect(function() SwitchTab(TeleportTab) end)
+SettingsTab.MouseButton1Click:Connect(function() SwitchTab(SettingsTab) end)
+
+-- Close Button
+CloseButton.MouseButton1Click:Connect(function()
+    TzuyHub:Destroy()
+end)
+
+-- Make GUI Draggable
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+TitleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
--- Nút TP quái vật
-tpButton.MouseButton1Click:Connect(function()
-    local tpCount = 0
-    for model, cframe in pairs(savedPositions) do
-        if model and model.Parent then
-            local rootPart = model:FindFirstChild("HumanoidRootPart") or 
-                           model:FindFirstChild("Torso") or 
-                           model:FindFirstChild("UpperTorso")
-            if rootPart and rootPart:IsA("BasePart") then
-                pcall(function()
-                    rootPart.CFrame = cframe
-                    rootPart.Velocity = Vector3.new(0, 0, 0)
-                    rootPart.RotVelocity = Vector3.new(0, 0, 0)
-                    rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                    rootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                    tpCount = tpCount + 1
-                end)
+TitleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- [[ LOGIC FARM ]]
+task.spawn(function()
+    while true do
+        if getgenv().AutoFarm then
+            local hasEgg = false
+            if Player.Backpack then
+                for _, item in pairs(Player.Backpack:GetChildren()) do
+                    if item.Name:lower():find("egg") then
+                        hasEgg = true
+                    end
+                end
+            end
+            
+            if hasEgg and getgenv().AutoTweenBase then
+                -- Tween về căn cứ
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and obj.Name:lower():find("base") then
+                        local tween = TweenService:Create(HRP, TweenInfo.new(0.5), {CFrame = CFrame.new(obj.Position + Vector3.new(0, 5, 0))})
+                        tween:Play()
+                        tween.Completed:Wait()
+                        firetouchinterest(HRP, obj, 0)
+                        firetouchinterest(HRP, obj, 1)
+                        break
+                    end
+                end
+            elseif getgenv().AutoCollect and not hasEgg then
+                -- Tìm trứng
+                local nearest = nil
+                local minDist = math.huge
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
+                        local dist = (HRP.Position - obj.Position).Magnitude
+                        if dist < minDist then
+                            minDist = dist
+                            nearest = obj
+                        end
+                    end
+                end
+                
+                if nearest then
+                    local tween = TweenService:Create(HRP, TweenInfo.new(0.3), {CFrame = CFrame.new(nearest.Position + Vector3.new(0, 5, 0))})
+                    tween:Play()
+                    tween.Completed:Wait()
+                    firetouchinterest(HRP, nearest, 0)
+                    firetouchinterest(HRP, nearest, 1)
+                end
             end
         end
-    end
-    
-    tpButton.Text = "✅ Đã TP " .. tpCount .. " Model!"
-    wait(2)
-    tpButton.Text = "🔄 TP Quái Về Chỗ Cũ"
-    print("[BTMod] Đã teleport " .. tpCount .. " model về vị trí cũ!")
-end)
-
--- Nút kéo trứng
-eggButton.MouseButton1Click:Connect(function()
-    local character = player.Character
-    if not character then return end
-    
-    local root = character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    local bestEgg = findBestEgg()
-    if bestEgg then
-        pcall(function()
-            bestEgg.CFrame = root.CFrame * CFrame.new(0, 0, -3)
-            bestEgg.Anchored = false
-            bestEgg.Velocity = Vector3.new(0, 0, 0)
-        end)
-        eggButton.Text = "✅ Đã kéo trứng xịn!"
-        print("[BTMod] Đã kéo trứng xịn nhất: " .. bestEgg.Name)
-    else
-        eggButton.Text = "❌ Không có trứng!"
-    end
-    wait(2)
-    eggButton.Text = "🥚 Kéo Trứng Đến"
-end)
-
--- Tự động lưu vị trí mỗi 15 giây
-spawn(function()
-    while true do
-        wait(15)
-        saveAllPositions()
+        task.wait(0.3)
     end
 end)
 
-print("[BTMod] Script đã chạy thành công! Auto Farm siêu tốc!")
+-- Anti AFK
+Player.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+end)
+
+print("🎮 Tzuy Hub đã được tải!")
+print("✅ GUI Menu đã sẵn sàng sử dụng")
