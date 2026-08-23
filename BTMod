@@ -1,507 +1,231 @@
--- [[ TZUY HUB GUI - EGG FARM ]]
+-- [[ TZUY HUB - Custom Speed & Anti Kick ]]
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
-local HRP = Character:WaitForChild("HumanoidRootPart")
-local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
-local UserInputService = game:GetService("UserInputService")
 
--- [[ TẠO GUI ]]
+-- Tạo GUI
 local TzuyHub = Instance.new("ScreenGui")
 TzuyHub.Name = "TzuyHub"
 TzuyHub.Parent = Player:WaitForChild("PlayerGui")
 TzuyHub.ResetOnSpawn = false
 
--- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 450, 0, 550)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -275)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.Size = UDim2.new(0, 400, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = TzuyHub
 
--- Corner
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 15)
-UICorner.Parent = MainFrame
-
--- Gradient Effect
-local UIGradient = Instance.new("UIGradient")
-UIGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 150)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 50, 100)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 0, 50))
-})
-UIGradient.Rotation = 45
-UIGradient.Parent = MainFrame
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 10)
+Corner.Parent = MainFrame
 
 -- Title Bar
 local TitleBar = Instance.new("Frame")
-TitleBar.Name = "TitleBar"
-TitleBar.Size = UDim2.new(1, 0, 0, 60)
-TitleBar.BackgroundColor3 = Color3.fromRGB(255, 50, 100)
+TitleBar.Size = UDim2.new(1, 0, 0, 50)
+TitleBar.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = MainFrame
 
 local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 15)
+TitleCorner.CornerRadius = UDim.new(0, 10)
 TitleCorner.Parent = TitleBar
 
--- Title Text
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -70, 1, 0)
-Title.Position = UDim2.new(0, 25, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "TZUY HUB"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 32
-Title.Font = Enum.Font.GothamBlack
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.TextStrokeTransparency = 0.5
-Title.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-Title.Parent = TitleBar
+local TitleText = Instance.new("TextLabel")
+TitleText.Size = UDim2.new(1, -60, 1, 0)
+TitleText.Position = UDim2.new(0, 20, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "TZUY HUB"
+TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleText.TextSize = 30
+TitleText.Font = Enum.Font.GothamBlack
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Parent = TitleBar
 
--- Subtitle
-local Subtitle = Instance.new("TextLabel")
-Subtitle.Size = UDim2.new(1, -70, 0, 20)
-Subtitle.Position = UDim2.new(0, 25, 0, 35)
-Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Egg Farm Premium"
-Subtitle.TextColor3 = Color3.fromRGB(255, 200, 220)
-Subtitle.TextSize = 12
-Subtitle.Font = Enum.Font.Gotham
-Subtitle.TextXAlignment = Enum.TextXAlignment.Left
-Subtitle.Parent = TitleBar
-
--- Close Button
 local CloseButton = Instance.new("TextButton")
 CloseButton.Size = UDim2.new(0, 40, 0, 40)
-CloseButton.Position = UDim2.new(1, -50, 0, 10)
+CloseButton.Position = UDim2.new(1, -50, 0, 5)
 CloseButton.BackgroundColor3 = Color3.fromRGB(200, 0, 50)
-CloseButton.Text = "×"
+CloseButton.Text = "X"
 CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.TextSize = 30
+CloseButton.TextSize = 22
 CloseButton.Font = Enum.Font.GothamBold
 CloseButton.Parent = TitleBar
 
 local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 10)
+CloseCorner.CornerRadius = UDim.new(0, 5)
 CloseCorner.Parent = CloseButton
+
+CloseButton.MouseButton1Click:Connect(function()
+    TzuyHub:Destroy()
+end)
 
 -- Tab Container
 local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, 0, 0, 50)
-TabContainer.Position = UDim2.new(0, 0, 0, 60)
-TabContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+TabContainer.Size = UDim2.new(1, 0, 0, 40)
+TabContainer.Position = UDim2.new(0, 0, 0, 50)
+TabContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 TabContainer.BorderSizePixel = 0
 TabContainer.Parent = MainFrame
 
 -- Tabs
-local Tabs = {}
-local function CreateTab(name, position)
-    local tab = Instance.new("TextButton")
-    tab.Size = UDim2.new(0, 150, 1, 0)
-    tab.Position = UDim2.new(0, position, 0, 0)
-    tab.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-    tab.BorderSizePixel = 0
-    tab.Text = name
-    tab.TextColor3 = Color3.fromRGB(255, 255, 255)
-    tab.TextSize = 14
-    tab.Font = Enum.Font.GothamBold
-    tab.Parent = TabContainer
-    return tab
-end
+local SettingsTab = Instance.new("TextButton")
+SettingsTab.Size = UDim2.new(0, 200, 1, 0)
+SettingsTab.Position = UDim2.new(0, 0, 0, 0)
+SettingsTab.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
+SettingsTab.Text = "SETTINGS"
+SettingsTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+SettingsTab.TextSize = 16
+SettingsTab.Font = Enum.Font.GothamBold
+SettingsTab.Parent = TabContainer
 
-local FarmTab = CreateTab("🥚 FARM", 0)
-local TeleportTab = CreateTab("📍 TELEPORT", 150)
-local SettingsTab = CreateTab("⚙️ SETTINGS", 300)
+local AntiKickTab = Instance.new("TextButton")
+AntiKickTab.Size = UDim2.new(0, 200, 1, 0)
+AntiKickTab.Position = UDim2.new(0, 200, 0, 0)
+AntiKickTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+AntiKickTab.Text = "ANTI KICK"
+AntiKickTab.TextColor3 = Color3.fromRGB(255, 255, 255)
+AntiKickTab.TextSize = 16
+AntiKickTab.Font = Enum.Font.GothamBold
+AntiKickTab.Parent = TabContainer
 
 -- Content Container
 local ContentContainer = Instance.new("Frame")
-ContentContainer.Size = UDim2.new(1, -20, 1, -120)
-ContentContainer.Position = UDim2.new(0, 10, 0, 120)
+ContentContainer.Size = UDim2.new(1, -20, 1, -100)
+ContentContainer.Position = UDim2.new(0, 10, 0, 100)
 ContentContainer.BackgroundTransparency = 1
 ContentContainer.Parent = MainFrame
 
--- [[ FARM TAB ]]
-local FarmPage = Instance.new("ScrollingFrame")
-FarmPage.Size = UDim2.new(1, 0, 1, 0)
-FarmPage.BackgroundTransparency = 1
-FarmPage.ScrollBarThickness = 5
-FarmPage.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 100)
-FarmPage.Parent = ContentContainer
-
--- Create Section
-local function CreateSection(name, position)
-    local Section = Instance.new("Frame")
-    Section.Size = UDim2.new(1, -10, 0, 35)
-    Section.Position = UDim2.new(0, 5, 0, position)
-    Section.BackgroundColor3 = Color3.fromRGB(255, 50, 100)
-    Section.BorderSizePixel = 0
-    Section.Parent = FarmPage
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 5)
-    Corner.Parent = Section
-    
-    local Label = Instance.new("TextLabel")
-    Label.Size = UDim2.new(1, 0, 1, 0)
-    Label.BackgroundTransparency = 1
-    Label.Text = name
-    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Label.TextSize = 16
-    Label.Font = Enum.Font.GothamBold
-    Label.Parent = Section
-    
-    return Section
-end
-
--- Toggle Button Function
-local function CreateToggle(name, position, callback)
-    local Toggle = Instance.new("TextButton")
-    Toggle.Size = UDim2.new(1, -10, 0, 45)
-    Toggle.Position = UDim2.new(0, 5, 0, position)
-    Toggle.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-    Toggle.BorderSizePixel = 0
-    Toggle.Text = "  " .. name .. ": OFF"
-    Toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Toggle.TextSize = 14
-    Toggle.Font = Enum.Font.GothamBold
-    Toggle.TextXAlignment = Enum.TextXAlignment.Left
-    Toggle.Parent = FarmPage
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
-    Corner.Parent = Toggle
-    
-    -- Indicator
-    local Indicator = Instance.new("Frame")
-    Indicator.Size = UDim2.new(0, 15, 0, 15)
-    Indicator.Position = UDim2.new(1, -25, 0.5, -7)
-    Indicator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    Indicator.BorderSizePixel = 0
-    Indicator.Parent = Toggle
-    
-    local IndicatorCorner = Instance.new("UICorner")
-    IndicatorCorner.CornerRadius = UDim.new(0, 7)
-    IndicatorCorner.Parent = Indicator
-    
-    local enabled = false
-    Toggle.MouseButton1Click:Connect(function()
-        enabled = not enabled
-        Toggle.Text = "  " .. name .. ": " .. (enabled and "ON" or "OFF")
-        Toggle.BackgroundColor3 = enabled and Color3.fromRGB(255, 50, 100) or Color3.fromRGB(50, 50, 55)
-        Indicator.BackgroundColor3 = enabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100)
-        callback(enabled)
-    end)
-    
-    return Toggle
-end
-
-CreateSection("Auto Farm", 10)
-local AutoFarm = CreateToggle("Auto Farm", 50, function(enabled)
-    getgenv().AutoFarm = enabled
-end)
-
-local AutoCollect = CreateToggle("Auto Collect", 105, function(enabled)
-    getgenv().AutoCollect = enabled
-end)
-
-CreateSection("Movement", 165)
-local SpeedHack = CreateToggle("Speed Hack", 205, function(enabled)
-    getgenv().SpeedHack = enabled
-    if enabled then
-        Humanoid.WalkSpeed = 200
-    else
-        Humanoid.WalkSpeed = 16
-    end
-end)
-
-local FlyMode = CreateToggle("Fly Mode", 260, function(enabled)
-    getgenv().FlyMode = enabled
-end)
-
-CreateSection("Protection", 320)
-local AutoTweenBase = CreateToggle("Auto Tween Base", 360, function(enabled)
-    getgenv().AutoTweenBase = enabled
-end)
-
-local AntiKick = CreateToggle("Anti Kick", 415, function(enabled)
-    getgenv().AntiKick = enabled
-end)
-
--- [[ TELEPORT TAB ]]
-local TeleportPage = Instance.new("ScrollingFrame")
-TeleportPage.Size = UDim2.new(1, 0, 1, 0)
-TeleportPage.BackgroundTransparency = 1
-TeleportPage.ScrollBarThickness = 5
-TeleportPage.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 100)
-TeleportPage.Visible = false
-TeleportPage.Parent = ContentContainer
-
--- Teleport Buttons
-local function CreateTeleportButton(name, position, target)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 50)
-    btn.Position = UDim2.new(0, 5, 0, position)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-    btn.BorderSizePixel = 0
-    btn.Text = name
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = TeleportPage
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
-    Corner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        if target == "base" then
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and obj.Name:lower():find("base") then
-                    HRP.CFrame = CFrame.new(obj.Position + Vector3.new(0, 5, 0))
-                    break
-                end
-            end
-        elseif target == "egg" then
-            local nearest = nil
-            local minDist = math.huge
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
-                    local dist = (HRP.Position - obj.Position).Magnitude
-                    if dist < minDist then
-                        minDist = dist
-                        nearest = obj
-                    end
-                end
-            end
-            if nearest then
-                HRP.CFrame = CFrame.new(nearest.Position + Vector3.new(0, 5, 0))
-            end
-        elseif target == "spawn" then
-            HRP.CFrame = CFrame.new(0, 50, 0)
-        end
-    end)
-    
-    return btn
-end
-
-CreateTeleportButton("🏠 Teleport to Base", 10, "base")
-CreateTeleportButton("🥚 Teleport to Egg", 70, "egg")
-CreateTeleportButton("📍 Teleport to Spawn", 130, "spawn")
-
--- [[ SETTINGS TAB ]]
+-- Settings Page
 local SettingsPage = Instance.new("ScrollingFrame")
 SettingsPage.Size = UDim2.new(1, 0, 1, 0)
 SettingsPage.BackgroundTransparency = 1
 SettingsPage.ScrollBarThickness = 5
-SettingsPage.ScrollBarImageColor3 = Color3.fromRGB(255, 50, 100)
-SettingsPage.Visible = false
 SettingsPage.Parent = ContentContainer
 
--- Speed Settings
+-- Anti Kick Page
+local AntiKickPage = Instance.new("ScrollingFrame")
+AntiKickPage.Size = UDim2.new(1, 0, 1, 0)
+AntiKickPage.BackgroundTransparency = 1
+AntiKickPage.ScrollBarThickness = 5
+AntiKickPage.Visible = false
+AntiKickPage.Parent = ContentContainer
+
+-- Settings Page Content
 local SpeedLabel = Instance.new("TextLabel")
 SpeedLabel.Size = UDim2.new(1, 0, 0, 30)
-SpeedLabel.Position = UDim2.new(0, 5, 0, 10)
+SpeedLabel.Position = UDim2.new(0, 5, 0, 20)
 SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.Text = "🏃 Walk Speed: 16"
+SpeedLabel.Text = "Walk Speed (không giới hạn):"
 SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedLabel.TextSize = 16
 SpeedLabel.Font = Enum.Font.GothamBold
 SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 SpeedLabel.Parent = SettingsPage
 
--- Speed Buttons
-local function CreateSpeedButton(text, position, speed)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 80, 0, 40)
-    btn.Position = UDim2.new(0, 5 + position, 0, 50)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-    btn.BorderSizePixel = 0
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = SettingsPage
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 5)
-    Corner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
+local SpeedInput = Instance.new("TextBox")
+SpeedInput.Size = UDim2.new(1, -10, 0, 40)
+SpeedInput.Position = UDim2.new(0, 5, 0, 60)
+SpeedInput.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+SpeedInput.BorderSizePixel = 0
+SpeedInput.Text = "100"
+SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedInput.TextSize = 18
+SpeedInput.Font = Enum.Font.GothamBold
+SpeedInput.PlaceholderText = "Nhập số..."
+SpeedInput.Parent = SettingsPage
+
+local SpeedCorner = Instance.new("UICorner")
+SpeedCorner.CornerRadius = UDim.new(0, 5)
+SpeedCorner.Parent = SpeedInput
+
+local SetSpeedButton = Instance.new("TextButton")
+SetSpeedButton.Size = UDim2.new(1, -10, 0, 40)
+SetSpeedButton.Position = UDim2.new(0, 5, 0, 110)
+SetSpeedButton.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
+SetSpeedButton.BorderSizePixel = 0
+SetSpeedButton.Text = "SET SPEED"
+SetSpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SetSpeedButton.TextSize = 16
+SetSpeedButton.Font = Enum.Font.GothamBold
+SetSpeedButton.Parent = SettingsPage
+
+local SetSpeedCorner = Instance.new("UICorner")
+SetSpeedCorner.CornerRadius = UDim.new(0, 5)
+SetSpeedCorner.Parent = SetSpeedButton
+
+SetSpeedButton.MouseButton1Click:Connect(function()
+    local speed = tonumber(SpeedInput.Text)
+    if speed then
         Humanoid.WalkSpeed = speed
-        SpeedLabel.Text = "🏃 Walk Speed: " .. speed
-    end)
-    
-    return btn
-end
+        print("Tốc độ đã đặt: " .. speed)
+    else
+        print("Số không hợp lệ")
+    end
+end)
 
-CreateSpeedButton("16", 0, 16)
-CreateSpeedButton("50", 85, 50)
-CreateSpeedButton("100", 170, 100)
-CreateSpeedButton("200", 255, 200)
+-- Anti Kick Page Content
+local AntiKickToggle = Instance.new("TextButton")
+AntiKickToggle.Size = UDim2.new(1, -10, 0, 50)
+AntiKickToggle.Position = UDim2.new(0, 5, 0, 20)
+AntiKickToggle.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+AntiKickToggle.BorderSizePixel = 0
+AntiKickToggle.Text = "Anti Kick: OFF"
+AntiKickToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+AntiKickToggle.TextSize = 16
+AntiKickToggle.Font = Enum.Font.GothamBold
+AntiKickToggle.Parent = AntiKickPage
 
--- Jump Power Settings
-local JumpLabel = Instance.new("TextLabel")
-JumpLabel.Size = UDim2.new(1, 0, 0, 30)
-JumpLabel.Position = UDim2.new(0, 5, 0, 110)
-JumpLabel.BackgroundTransparency = 1
-JumpLabel.Text = "🦘 Jump Power: 50"
-JumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-JumpLabel.TextSize = 16
-JumpLabel.Font = Enum.Font.GothamBold
-JumpLabel.TextXAlignment = Enum.TextXAlignment.Left
-JumpLabel.Parent = SettingsPage
+local AntiKickCorner = Instance.new("UICorner")
+AntiKickCorner.CornerRadius = UDim.new(0, 5)
+AntiKickCorner.Parent = AntiKickToggle
 
--- Jump Buttons
-local function CreateJumpButton(text, position, power)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 80, 0, 40)
-    btn.Position = UDim2.new(0, 5 + position, 0, 150)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-    btn.BorderSizePixel = 0
-    btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamBold
-    btn.Parent = SettingsPage
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 5)
-    Corner.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        Humanoid.JumpPower = power
-        JumpLabel.Text = "🦘 Jump Power: " .. power
-    end)
-    
-    return btn
-end
-
-CreateJumpButton("50", 0, 50)
-CreateJumpButton("100", 85, 100)
-CreateJumpButton("150", 170, 150)
-CreateJumpButton("200", 255, 200)
+local antiKickEnabled = false
+AntiKickToggle.MouseButton1Click:Connect(function()
+    antiKickEnabled = not antiKickEnabled
+    AntiKickToggle.Text = "Anti Kick: " .. (antiKickEnabled and "ON" or "OFF")
+    AntiKickToggle.BackgroundColor3 = antiKickEnabled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(45, 45, 55)
+    if antiKickEnabled then
+        -- Kích hoạt chống kick (hook metamethod)
+        local mt = getrawmetatable(game)
+        setreadonly(mt, false)
+        local oldNamecall = mt.__namecall
+        mt.__namecall = newcclosure(function(self, ...)
+            local method = getnamecallmethod()
+            if method == "Kick" or method == "kick" or method == "Ban" or method == "ban" then
+                return nil
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+        print("Anti Kick đã bật")
+    else
+        print("Anti Kick đã tắt")
+    end
+end)
 
 -- Tab Switching
-local function SwitchTab(tab)
-    FarmPage.Visible = (tab == FarmTab)
-    TeleportPage.Visible = (tab == TeleportTab)
-    SettingsPage.Visible = (tab == SettingsTab)
-    
-    FarmTab.BackgroundColor3 = (tab == FarmTab) and Color3.fromRGB(255, 50, 100) or Color3.fromRGB(40, 40, 45)
-    TeleportTab.BackgroundColor3 = (tab == TeleportTab) and Color3.fromRGB(255, 50, 100) or Color3.fromRGB(40, 40, 45)
-    SettingsTab.BackgroundColor3 = (tab == SettingsTab) and Color3.fromRGB(255, 50, 100) or Color3.fromRGB(40, 40, 45)
-end
-
-FarmTab.MouseButton1Click:Connect(function() SwitchTab(FarmTab) end)
-TeleportTab.MouseButton1Click:Connect(function() SwitchTab(TeleportTab) end)
-SettingsTab.MouseButton1Click:Connect(function() SwitchTab(SettingsTab) end)
-
--- Close Button
-CloseButton.MouseButton1Click:Connect(function()
-    TzuyHub:Destroy()
+SettingsTab.MouseButton1Click:Connect(function()
+    SettingsPage.Visible = true
+    AntiKickPage.Visible = false
+    SettingsTab.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
+    AntiKickTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 end)
 
--- Make GUI Draggable
-local dragging
-local dragInput
-local dragStart
-local startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
-
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
+AntiKickTab.MouseButton1Click:Connect(function()
+    SettingsPage.Visible = false
+    AntiKickPage.Visible = true
+    SettingsTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    AntiKickTab.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
 end)
 
-TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
-    end
-end)
-
--- [[ LOGIC FARM ]]
-task.spawn(function()
-    while true do
-        if getgenv().AutoFarm then
-            local hasEgg = false
-            if Player.Backpack then
-                for _, item in pairs(Player.Backpack:GetChildren()) do
-                    if item.Name:lower():find("egg") then
-                        hasEgg = true
-                    end
-                end
-            end
-            
-            if hasEgg and getgenv().AutoTweenBase then
-                -- Tween về căn cứ
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("BasePart") and obj.Name:lower():find("base") then
-                        local tween = TweenService:Create(HRP, TweenInfo.new(0.5), {CFrame = CFrame.new(obj.Position + Vector3.new(0, 5, 0))})
-                        tween:Play()
-                        tween.Completed:Wait()
-                        firetouchinterest(HRP, obj, 0)
-                        firetouchinterest(HRP, obj, 1)
-                        break
-                    end
-                end
-            elseif getgenv().AutoCollect and not hasEgg then
-                -- Tìm trứng
-                local nearest = nil
-                local minDist = math.huge
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
-                        local dist = (HRP.Position - obj.Position).Magnitude
-                        if dist < minDist then
-                            minDist = dist
-                            nearest = obj
-                        end
-                    end
-                end
-                
-                if nearest then
-                    local tween = TweenService:Create(HRP, TweenInfo.new(0.3), {CFrame = CFrame.new(nearest.Position + Vector3.new(0, 5, 0))})
-                    tween:Play()
-                    tween.Completed:Wait()
-                    firetouchinterest(HRP, nearest, 0)
-                    firetouchinterest(HRP, nearest, 1)
-                end
-            end
-        end
-        task.wait(0.3)
-    end
-end)
-
--- Anti AFK
+-- Chống AFK cơ bản
 Player.Idled:Connect(function()
     VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     task.wait(1)
     VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
-print("🎮 Tzuy Hub đã được tải!")
-print("✅ GUI Menu đã sẵn sàng sử dụng")
+print("Tzuy Hub đã tải!")
