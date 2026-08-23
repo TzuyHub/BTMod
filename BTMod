@@ -1,219 +1,55 @@
--- [[ TZUY HUB - Menu Ngang Gọn Nhẹ ]]
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
+-- [[ TZUY HUB - SIÊU AN TOÀN KHÔNG BỊ KICK ]]
+local Player = game:GetService("Players").LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
-local VirtualUser = game:GetService("VirtualUser")
 
--- Tạo GUI chính
-local TzuyHub = Instance.new("ScreenGui")
-TzuyHub.Name = "TzuyHub"
-TzuyHub.Parent = Player:WaitForChild("PlayerGui")
-TzuyHub.ResetOnSpawn = false
+-- Chờ 5 giây để anti-cheat ổn định
+task.wait(5)
 
--- Khung chính nằm ngang
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 600, 0, 200) -- Ngang rộng hơn là cao
-MainFrame.Position = UDim2.new(0.5, -300, 0.5, -100)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = TzuyHub
+-- Tăng tốc từ từ (không đột ngột)
+for speed = 16, 40, 2 do
+    Humanoid.WalkSpeed = speed
+    task.wait(0.3)
+end
 
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 10)
-Corner.Parent = MainFrame
-
--- Title Bar (mỏng hơn)
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
-TitleCorner.Parent = TitleBar
-
-local TitleText = Instance.new("TextLabel")
-TitleText.Size = UDim2.new(1, -50, 1, 0)
-TitleText.Position = UDim2.new(0, 15, 0, 0)
-TitleText.BackgroundTransparency = 1
-TitleText.Text = "TZUY HUB"
-TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleText.TextSize = 22
-TitleText.Font = Enum.Font.GothamBlack
-TitleText.TextXAlignment = Enum.TextXAlignment.Left
-TitleText.Parent = TitleBar
-
-local CloseButton = Instance.new("TextButton")
-CloseButton.Size = UDim2.new(0, 35, 0, 35)
-CloseButton.Position = UDim2.new(1, -40, 0, 2)
-CloseButton.BackgroundColor3 = Color3.fromRGB(200, 0, 50)
-CloseButton.Text = "X"
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.TextSize = 18
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.Parent = TitleBar
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 5)
-CloseCorner.Parent = CloseButton
-
-CloseButton.MouseButton1Click:Connect(function()
-    TzuyHub:Destroy()
-end)
-
--- Tab Container nằm ngang
-local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1, 0, 0, 35)
-TabContainer.Position = UDim2.new(0, 0, 0, 40)
-TabContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-TabContainer.BorderSizePixel = 0
-TabContainer.Parent = MainFrame
-
--- Tabs nằm ngang
-local SettingsTab = Instance.new("TextButton")
-SettingsTab.Size = UDim2.new(0, 150, 1, 0)
-SettingsTab.Position = UDim2.new(0, 0, 0, 0)
-SettingsTab.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
-SettingsTab.Text = "SETTINGS"
-SettingsTab.TextColor3 = Color3.fromRGB(255, 255, 255)
-SettingsTab.TextSize = 14
-SettingsTab.Font = Enum.Font.GothamBold
-SettingsTab.Parent = TabContainer
-
-local AntiKickTab = Instance.new("TextButton")
-AntiKickTab.Size = UDim2.new(0, 150, 1, 0)
-AntiKickTab.Position = UDim2.new(0, 150, 0, 0)
-AntiKickTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-AntiKickTab.Text = "ANTI KICK"
-AntiKickTab.TextColor3 = Color3.fromRGB(255, 255, 255)
-AntiKickTab.TextSize = 14
-AntiKickTab.Font = Enum.Font.GothamBold
-AntiKickTab.Parent = TabContainer
-
--- Nội dung
-local ContentContainer = Instance.new("Frame")
-ContentContainer.Size = UDim2.new(1, -20, 1, -85)
-ContentContainer.Position = UDim2.new(0, 10, 0, 75)
-ContentContainer.BackgroundTransparency = 1
-ContentContainer.Parent = MainFrame
-
--- Settings Page
-local SettingsPage = Instance.new("Frame")
-SettingsPage.Size = UDim2.new(1, 0, 1, 0)
-SettingsPage.BackgroundTransparency = 1
-SettingsPage.Parent = ContentContainer
-
--- Anti Kick Page
-local AntiKickPage = Instance.new("Frame")
-AntiKickPage.Size = UDim2.new(1, 0, 1, 0)
-AntiKickPage.BackgroundTransparency = 1
-AntiKickPage.Visible = false
-AntiKickPage.Parent = ContentContainer
-
--- Settings Page
-local SpeedInput = Instance.new("TextBox")
-SpeedInput.Size = UDim2.new(0, 200, 0, 35)
-SpeedInput.Position = UDim2.new(0, 0, 0, 0)
-SpeedInput.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-SpeedInput.BorderSizePixel = 0
-SpeedInput.Text = "100"
-SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedInput.TextSize = 16
-SpeedInput.Font = Enum.Font.GothamBold
-SpeedInput.PlaceholderText = "Nhập tốc độ..."
-SpeedInput.Parent = SettingsPage
-
-local SpeedCorner = Instance.new("UICorner")
-SpeedCorner.CornerRadius = UDim.new(0, 5)
-SpeedCorner.Parent = SpeedInput
-
-local SetSpeedButton = Instance.new("TextButton")
-SetSpeedButton.Size = UDim2.new(0, 150, 0, 35)
-SetSpeedButton.Position = UDim2.new(0, 210, 0, 0)
-SetSpeedButton.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
-SetSpeedButton.BorderSizePixel = 0
-SetSpeedButton.Text = "SET SPEED"
-SetSpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-SetSpeedButton.TextSize = 14
-SetSpeedButton.Font = Enum.Font.GothamBold
-SetSpeedButton.Parent = SettingsPage
-
-local SetSpeedCorner = Instance.new("UICorner")
-SetSpeedCorner.CornerRadius = UDim.new(0, 5)
-SetSpeedCorner.Parent = SetSpeedButton
-
-SetSpeedButton.MouseButton1Click:Connect(function()
-    local speed = tonumber(SpeedInput.Text)
-    if speed then
-        Humanoid.WalkSpeed = speed
-        print("Tốc độ đã đặt: " .. speed)
-    else
-        print("Số không hợp lệ")
-    end
-end)
-
--- Anti Kick Page
-local AntiKickToggle = Instance.new("TextButton")
-AntiKickToggle.Size = UDim2.new(1, 0, 0, 40)
-AntiKickToggle.Position = UDim2.new(0, 0, 0, 0)
-AntiKickToggle.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-AntiKickToggle.BorderSizePixel = 0
-AntiKickToggle.Text = "Anti Kick: OFF"
-AntiKickToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-AntiKickToggle.TextSize = 14
-AntiKickToggle.Font = Enum.Font.GothamBold
-AntiKickToggle.Parent = AntiKickPage
-
-local AntiKickCorner = Instance.new("UICorner")
-AntiKickCorner.CornerRadius = UDim.new(0, 5)
-AntiKickCorner.Parent = AntiKickToggle
-
-local antiKickEnabled = false
-AntiKickToggle.MouseButton1Click:Connect(function()
-    antiKickEnabled = not antiKickEnabled
-    AntiKickToggle.Text = "Anti Kick: " .. (antiKickEnabled and "ON" or "OFF")
-    AntiKickToggle.BackgroundColor3 = antiKickEnabled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(45, 45, 55)
-    if antiKickEnabled then
-        -- Chống kick cơ bản (có thể bị phát hiện, dùng cẩn thận)
-        local mt = getrawmetatable(game)
-        setreadonly(mt, false)
-        local oldNamecall = mt.__namecall
-        mt.__namecall = newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            if method == "Kick" or method == "kick" or method == "Ban" or method == "ban" then
-                return nil
-            end
-            return oldNamecall(self, ...)
-        end)
-        setreadonly(mt, true)
-        print("Anti Kick đã bật")
-    else
-        print("Anti Kick đã tắt")
-    end
-end)
-
--- Chuyển tab
-SettingsTab.MouseButton1Click:Connect(function()
-    SettingsPage.Visible = true
-    AntiKickPage.Visible = false
-    SettingsTab.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
-    AntiKickTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-end)
-
-AntiKickTab.MouseButton1Click:Connect(function()
-    SettingsPage.Visible = false
-    AntiKickPage.Visible = true
-    SettingsTab.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-    AntiKickTab.BackgroundColor3 = Color3.fromRGB(255, 80, 120)
-end)
-
--- Chống AFK cơ bản
+-- Chống AFK nhẹ (không dùng VirtualUser nếu bị phát hiện)
 Player.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    -- Thử dùng VirtualUser, nếu bị kick thì bỏ dòng này
+    pcall(function()
+        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
 end)
 
-print("Tzuy Hub (menu ngang) đã tải!")
+-- Tìm và nhặt trứng thủ công (không teleport, không firetouchinterest liên tục)
+local function TryCollectEgg()
+    local HRP = Character:FindFirstChild("HumanoidRootPart")
+    if not HRP then return end
+    
+    local nearest = nil
+    local minDist = 100
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
+            local dist = (HRP.Position - obj.Position).Magnitude
+            if dist < minDist then
+                minDist = dist
+                nearest = obj
+            end
+        end
+    end
+    
+    if nearest then
+        Humanoid:MoveTo(nearest.Position)
+        task.wait(2)
+        -- Chỉ chạm 1 lần, không spam
+        firetouchinterest(HRP, nearest, 0)
+        firetouchinterest(HRP, nearest, 1)
+        task.wait(1)
+    end
+end
+
+-- Chạy thử 1 lần
+TryCollectEgg()
+
+print("Script an toàn đã chạy xong, không lặp lại.")
