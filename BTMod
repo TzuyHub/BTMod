@@ -1,55 +1,133 @@
--- [[ TZUY HUB - SIÊU AN TOÀN KHÔNG BỊ KICK ]]
-local Player = game:GetService("Players").LocalPlayer
+-- [[ TZUY HUB - MENU ĐƠN GIẢN DỄ THẤY ]]
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 
--- Chờ 5 giây để anti-cheat ổn định
-task.wait(5)
+-- Tạo GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TzuyHub"
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
 
--- Tăng tốc từ từ (không đột ngột)
-for speed = 16, 40, 2 do
-    Humanoid.WalkSpeed = speed
-    task.wait(0.3)
-end
+-- Khung chính
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 300, 0, 250)
+Main.Position = UDim2.new(0.5, -150, 0.5, -125)
+Main.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+Main.BorderSizePixel = 0
+Main.Parent = ScreenGui
 
--- Chống AFK nhẹ (không dùng VirtualUser nếu bị phát hiện)
-Player.Idled:Connect(function()
-    -- Thử dùng VirtualUser, nếu bị kick thì bỏ dòng này
-    pcall(function()
-        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    end)
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 10)
+Corner.Parent = Main
+
+-- Thanh tiêu đề
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.BackgroundColor3 = Color3.fromRGB(255, 0, 100)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = Main
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = TitleBar
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "TZUY HUB"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 24
+Title.Font = Enum.Font.GothamBlack
+Title.TextXAlignment = Enum.TextXAlignment.Center
+Title.Parent = TitleBar
+
+-- Nút đóng
+local Close = Instance.new("TextButton")
+Close.Size = UDim2.new(0, 30, 0, 30)
+Close.Position = UDim2.new(1, -35, 0, 5)
+Close.BackgroundColor3 = Color3.fromRGB(150, 0, 50)
+Close.Text = "X"
+Close.TextColor3 = Color3.fromRGB(255, 255, 255)
+Close.TextSize = 16
+Close.Font = Enum.Font.GothamBold
+Close.Parent = TitleBar
+
+Close.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
 
--- Tìm và nhặt trứng thủ công (không teleport, không firetouchinterest liên tục)
-local function TryCollectEgg()
+-- Ô nhập tốc độ
+local SpeedInput = Instance.new("TextBox")
+SpeedInput.Size = UDim2.new(1, -20, 0, 40)
+SpeedInput.Position = UDim2.new(0, 10, 0, 60)
+SpeedInput.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+SpeedInput.BorderSizePixel = 0
+SpeedInput.Text = "100"
+SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedInput.TextSize = 18
+SpeedInput.Font = Enum.Font.GothamBold
+SpeedInput.PlaceholderText = "Nhập tốc độ..."
+SpeedInput.Parent = Main
+
+local InputCorner = Instance.new("UICorner")
+InputCorner.CornerRadius = UDim.new(0, 5)
+InputCorner.Parent = SpeedInput
+
+-- Nút đặt tốc độ
+local SetSpeed = Instance.new("TextButton")
+SetSpeed.Size = UDim2.new(1, -20, 0, 40)
+SetSpeed.Position = UDim2.new(0, 10, 0, 110)
+SetSpeed.BackgroundColor3 = Color3.fromRGB(255, 0, 100)
+SetSpeed.BorderSizePixel = 0
+SetSpeed.Text = "SET SPEED"
+SetSpeed.TextColor3 = Color3.fromRGB(255, 255, 255)
+SetSpeed.TextSize = 16
+SetSpeed.Font = Enum.Font.GothamBold
+SetSpeed.Parent = Main
+
+local SetCorner = Instance.new("UICorner")
+SetCorner.CornerRadius = UDim.new(0, 5)
+SetCorner.Parent = SetSpeed
+
+SetSpeed.MouseButton1Click:Connect(function()
+    local speed = tonumber(SpeedInput.Text)
+    if speed then
+        Humanoid.WalkSpeed = speed
+        print("Tốc độ đã đặt: " .. speed)
+    end
+end)
+
+-- Nút lấy trứng
+local GetEgg = Instance.new("TextButton")
+GetEgg.Size = UDim2.new(1, -20, 0, 40)
+GetEgg.Position = UDim2.new(0, 10, 0, 160)
+GetEgg.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+GetEgg.BorderSizePixel = 0
+GetEgg.Text = "LẤY TRỨNG"
+GetEgg.TextColor3 = Color3.fromRGB(255, 255, 255)
+GetEgg.TextSize = 16
+GetEgg.Font = Enum.Font.GothamBold
+GetEgg.Parent = Main
+
+local EggCorner = Instance.new("UICorner")
+EggCorner.CornerRadius = UDim.new(0, 5)
+EggCorner.Parent = GetEgg
+
+GetEgg.MouseButton1Click:Connect(function()
     local HRP = Character:FindFirstChild("HumanoidRootPart")
-    if not HRP then return end
-    
-    local nearest = nil
-    local minDist = 100
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
-            local dist = (HRP.Position - obj.Position).Magnitude
-            if dist < minDist then
-                minDist = dist
-                nearest = obj
+    if HRP then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and obj.Name:lower():find("egg") then
+                HRP.CFrame = CFrame.new(obj.Position + Vector3.new(0, 5, 0))
+                task.wait(0.2)
+                firetouchinterest(HRP, obj, 0)
+                firetouchinterest(HRP, obj, 1)
+                break
             end
         end
     end
-    
-    if nearest then
-        Humanoid:MoveTo(nearest.Position)
-        task.wait(2)
-        -- Chỉ chạm 1 lần, không spam
-        firetouchinterest(HRP, nearest, 0)
-        firetouchinterest(HRP, nearest, 1)
-        task.wait(1)
-    end
-end
+end)
 
--- Chạy thử 1 lần
-TryCollectEgg()
-
-print("Script an toàn đã chạy xong, không lặp lại.")
+print("Tzuy Hub đã hiển thị!")
